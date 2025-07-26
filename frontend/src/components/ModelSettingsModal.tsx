@@ -38,12 +38,14 @@ export function ModelSettingsModal({
     // if (showModelSettings) {
       const fetchModelConfig = async () => {
         try {
-          const response = await fetch(`${serverAddress}/get-model-config`);
-          const data = await response.json();
+        const data = await invoke('api_get_model_config') as any;
+        if (data && data.provider !== null) {
+
           setModelConfig(data);
-        } catch (error) {
-          console.error('Failed to fetch model config:', error);
         }
+      } catch (error) {
+        console.error('Failed to fetch model config:', error);
+      }
       };
 
       fetchModelConfig();
@@ -98,24 +100,7 @@ export function ModelSettingsModal({
   useEffect(() => {
     const loadModels = async () => {
       try {
-        const response = await fetch('http://localhost:11434/api/tags', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const modelList = data.models.map((model: any) => ({
-          name: model.name,
-          id: model.model,
-          size: formatSize(model.size),
-          modified: model.modified_at
-        }));
+        const modelList = await invoke('get_ollama_models') as OllamaModel[];
         setModels(modelList);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load Ollama models');

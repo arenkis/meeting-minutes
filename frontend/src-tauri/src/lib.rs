@@ -1408,6 +1408,7 @@ pub fn run() {
             track_summary_regenerated,
             track_model_changed,
             track_custom_prompt_used,
+            ollama::get_ollama_models,
             api::api_get_meetings,
             api::api_search_transcripts,
             api::api_get_profile,
