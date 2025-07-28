@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tauri::{AppHandle, Runtime};
 use tauri_plugin_store::StoreExt;
+use log::{info as log_info, error as log_error, debug as log_debug, warn as log_warn};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiResponse<T> {
@@ -189,15 +190,15 @@ async fn get_auth_token<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
     match store.get("authToken") {
         Some(token) => {
             if let Some(token_str) = token.as_str() {
-                println!("Found auth token: {}", &token_str[..std::cmp::min(20, token_str.len())]);
+                log_info!("Found auth token: {}", &token_str[..std::cmp::min(20, token_str.len())]);
                 Some(token_str.to_string())
             } else {
-                println!("Auth token is not a string");
+                log_warn!("Auth token is not a string");
                 None
             }
         }
         None => {
-            println!("No auth token found in store");
+            log_warn!("No auth token found in store");
             None
         },
     }
@@ -210,15 +211,15 @@ async fn get_server_address<R: Runtime>(app: &AppHandle<R>) -> Result<String, St
     match store.get("appServerUrl") {
         Some(url) => {
             if let Some(url_str) = url.as_str() {
-                println!("Using server URL: {}", url_str);
+                log_info!("Using server URL: {}", url_str);
                 Ok(url_str.to_string())
             } else {
-                println!("Server URL is not a string");
+                log_warn!("Server URL is not a string");
                 Err("Server URL is not a string".to_string())
             }
         }
         None => {
-            println!("No server URL found, using default: http://localhost:5168");
+            log_warn!("No server URL found, using default: http://localhost:5168");
             Ok("http://localhost:5168".to_string()) // Default fallback to match current backend port
         },
     }
@@ -237,7 +238,7 @@ async fn make_api_request<R: Runtime, T: for<'de> Deserialize<'de>>(
     let server_url = get_server_address(app).await?;
     
     let url = format!("{}{}", server_url, endpoint);
-    println!("Making {} request to: {}", method, url);
+    log_info!("Making {} request to: {}", method, url);
     
     let mut request = match method.to_uppercase().as_str() {
         "GET" => client.get(&url),
@@ -249,10 +250,10 @@ async fn make_api_request<R: Runtime, T: for<'de> Deserialize<'de>>(
     
     // Add authorization header if auth token is provided
     if let Some(token) = auth_token {
-        println!("Adding authorization header");
+        log_info!("Adding authorization header");
         request = request.header("Authorization", format!("Bearer {}", token));
     } else {
-        println!("No auth token provided, making unauthenticated request");
+        log_warn!("No auth token provided, making unauthenticated request");
     }
     
     request = request.header("Content-Type", "application/json");
@@ -271,31 +272,31 @@ async fn make_api_request<R: Runtime, T: for<'de> Deserialize<'de>>(
     
     let response = request.send().await.map_err(|e| {
         let error_msg = format!("Request failed: {}", e);
-        println!("{}", error_msg);
+        log_error!("{}", error_msg);
         error_msg
     })?;
     
     let status = response.status();
-    println!("Response status: {}", status);
+    log_info!("Response status: {}", status);
     
     if !status.is_success() {
         let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
         let error_msg = format!("HTTP {}: {}", status, error_text);
-        println!("{}", error_msg);
+        log_error!("{}", error_msg);
         return Err(error_msg);
     }
     
     let response_text = response.text().await.map_err(|e| {
         let error_msg = format!("Failed to read response: {}", e);
-        println!("{}", error_msg);
+        log_error!("{}", error_msg);
         error_msg
     })?;
     
-    println!("Response body: {}", &response_text[..std::cmp::min(200, response_text.len())]);
+    log_info!("Response body: {}", &response_text[..std::cmp::min(200, response_text.len())]);
     
     serde_json::from_str(&response_text).map_err(|e| {
         let error_msg = format!("Failed to parse JSON: {}", e);
-        println!("{}", error_msg);
+        log_error!("{}", error_msg);
         error_msg
     })
 }
@@ -307,7 +308,7 @@ pub async fn api_get_meetings<R: Runtime>(
     app: AppHandle<R>, 
     auth_token: Option<String>
 ) -> Result<Vec<Meeting>, String> {
-    println!("api_get_meetings called with auth_token: {}", auth_token.is_some());
+    log_info!("api_get_meetings called with auth_token: {}", auth_token.is_some());
     
     let cache_headers = HashMap::from([
         ("Cache-Control".to_string(), "no-cache, no-store, must-revalidate".to_string()),
@@ -318,8 +319,8 @@ pub async fn api_get_meetings<R: Runtime>(
     let result = make_api_request::<R, Vec<Meeting>>(&app, "/get-meetings", "GET", None, Some(cache_headers), auth_token).await;
     
     match &result {
-        Ok(meetings) => println!("Successfully got {} meetings", meetings.len()),
-        Err(e) => println!("Error getting meetings: {}", e),
+        Ok(meetings) => log_info!("Successfully got {} meetings", meetings.len()),
+        Err(e) => log_error!("Error getting meetings: {}", e),
     }
     
     result
@@ -331,7 +332,7 @@ pub async fn api_search_transcripts<R: Runtime>(
     query: String,
     auth_token: Option<String>,
 ) -> Result<Vec<TranscriptSearchResult>, String> {
-    println!("api_search_transcripts called with query: {}, auth_token: {}", query, auth_token.is_some());
+    log_info!("api_search_transcripts called with query: {}, auth_token: {}", query, auth_token.is_some());
     
     let search_request = SearchRequest { query };
     let body = serde_json::to_string(&search_request).map_err(|e| e.to_string())?;
@@ -346,7 +347,7 @@ pub async fn api_get_profile<R: Runtime>(
     license_key: String,
     auth_token: Option<String>,
 ) -> Result<Profile, String> {
-    println!("api_get_profile called for email: {}, auth_token: {}", email, auth_token.is_some());
+    log_info!("api_get_profile called for email: {}, auth_token: {}", email, auth_token.is_some());
     
     let profile_request = ProfileRequest { email, license_key };
     let body = serde_json::to_string(&profile_request).map_err(|e| e.to_string())?;
@@ -361,7 +362,7 @@ pub async fn api_save_profile<R: Runtime>(
     email: String,
     auth_token: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    println!("api_save_profile called for email: {}, auth_token: {}", email, auth_token.is_some());
+    log_info!("api_save_profile called for email: {}, auth_token: {}", email, auth_token.is_some());
     
     let save_request = SaveProfileRequest { id, email };
     let body = serde_json::to_string(&save_request).map_err(|e| e.to_string())?;
@@ -378,7 +379,7 @@ pub async fn api_update_profile<R: Runtime>(
     position: String,
     auth_token: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    println!("api_update_profile called for email: {}, auth_token: {}", email, auth_token.is_some());
+    log_info!("api_update_profile called for email: {}, auth_token: {}", email, auth_token.is_some());
     
     let update_request = UpdateProfileRequest { 
         email, 
@@ -396,7 +397,7 @@ pub async fn api_get_model_config<R: Runtime>(
     app: AppHandle<R>,
     auth_token: Option<String>,
 ) -> Result<Option<ModelConfig>, String> {
-    println!("api_get_model_config called with auth_token: {}", auth_token.is_some());
+    log_info!("api_get_model_config called with auth_token: {}", auth_token.is_some());
     
     make_api_request::<R, Option<ModelConfig>>(&app, "/get-model-config", "GET", None, None, auth_token).await
 }
@@ -410,7 +411,7 @@ pub async fn api_save_model_config<R: Runtime>(
     api_key: Option<String>,
     auth_token: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    println!("api_save_model_config called for provider: {}, auth_token: {}", provider, auth_token.is_some());
+    log_info!("api_save_model_config called for provider: {}, auth_token: {}", provider, auth_token.is_some());
     
     let save_request = SaveModelConfigRequest { 
         provider, 
@@ -429,7 +430,7 @@ pub async fn api_get_api_key<R: Runtime>(
     provider: String,
     auth_token: Option<String>,
 ) -> Result<String, String> {
-    println!("api_get_api_key called for provider: {}, auth_token: {}", provider, auth_token.is_some());
+    log_info!("api_get_api_key called for provider: {}, auth_token: {}", provider, auth_token.is_some());
     
     let request = GetApiKeyRequest { provider };
     let body = serde_json::to_string(&request).map_err(|e| e.to_string())?;
@@ -442,7 +443,7 @@ pub async fn api_get_transcript_config<R: Runtime>(
     app: AppHandle<R>,
     auth_token: Option<String>,
 ) -> Result<Option<TranscriptConfig>, String> {
-    println!("api_get_transcript_config called with auth_token: {}", auth_token.is_some());
+    log_info!("api_get_transcript_config called with auth_token: {}", auth_token.is_some());
     
     make_api_request::<R, Option<TranscriptConfig>>(&app, "/get-transcript-config", "GET", None, None, auth_token).await
 }
@@ -455,7 +456,7 @@ pub async fn api_save_transcript_config<R: Runtime>(
     api_key: Option<String>,
     auth_token: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    println!("api_save_transcript_config called for provider: {}, auth_token: {}", provider, auth_token.is_some());
+    log_info!("api_save_transcript_config called for provider: {}, auth_token: {}", provider, auth_token.is_some());
     
     let save_request = SaveTranscriptConfigRequest { 
         provider, 
@@ -473,7 +474,7 @@ pub async fn api_get_transcript_api_key<R: Runtime>(
     provider: String,
     auth_token: Option<String>,
 ) -> Result<String, String> {
-    println!("api_get_transcript_api_key called for provider: {}, auth_token: {}", provider, auth_token.is_some());
+    log_info!("api_get_transcript_api_key called for provider: {}, auth_token: {}", provider, auth_token.is_some());
     
     let request = GetApiKeyRequest { provider };
     let body = serde_json::to_string(&request).map_err(|e| e.to_string())?;
@@ -487,7 +488,7 @@ pub async fn api_delete_meeting<R: Runtime>(
     meeting_id: String,
     auth_token: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    println!("api_delete_meeting called for meeting_id: {}, auth_token: {}", meeting_id, auth_token.is_some());
+    log_info!("api_delete_meeting called for meeting_id: {}, auth_token: {}", meeting_id, auth_token.is_some());
     
     let delete_request = DeleteMeetingRequest { meeting_id };
     let body = serde_json::to_string(&delete_request).map_err(|e| e.to_string())?;
@@ -501,7 +502,7 @@ pub async fn api_get_meeting<R: Runtime>(
     meeting_id: String,
     auth_token: Option<String>,
 ) -> Result<MeetingDetails, String> {
-    println!("api_get_meeting called for meeting_id: {}, auth_token: {}", meeting_id, auth_token.is_some());
+    log_info!("api_get_meeting called for meeting_id: {}, auth_token: {}", meeting_id, auth_token.is_some());
     
     make_api_request::<R, MeetingDetails>(&app, &format!("/get-meeting/{}", meeting_id), "GET", None, None, auth_token).await
 }
@@ -513,7 +514,7 @@ pub async fn api_save_meeting_title<R: Runtime>(
     title: String,
     auth_token: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    println!("api_save_meeting_title called for meeting_id: {}, auth_token: {}", meeting_id, auth_token.is_some());
+    log_info!("api_save_meeting_title called for meeting_id: {}, auth_token: {}", meeting_id, auth_token.is_some());
     
     let save_request = SaveMeetingTitleRequest { meeting_id, title };
     let body = serde_json::to_string(&save_request).map_err(|e| e.to_string())?;
@@ -528,7 +529,7 @@ pub async fn api_save_meeting_summary<R: Runtime>(
     summary: serde_json::Value,
     auth_token: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    println!("api_save_meeting_summary called for meeting_id: {}, auth_token: {}", meeting_id, auth_token.is_some());
+    log_info!("api_save_meeting_summary called for meeting_id: {}, auth_token: {}", meeting_id, auth_token.is_some());
     
     let save_request = SaveMeetingSummaryRequest { meeting_id, summary };
     let body = serde_json::to_string(&save_request).map_err(|e| e.to_string())?;
@@ -542,18 +543,18 @@ pub async fn api_get_summary<R: Runtime>(
     meeting_id: String,
     auth_token: Option<String>,
 ) -> Result<SummaryResponse, String> {
-    println!("=== api_get_summary DEBUG ===");
-    println!("meeting_id: {}", meeting_id);
-    println!("auth_token present: {}", auth_token.is_some());
+    log_debug!("=== api_get_summary DEBUG ===");
+    log_debug!("meeting_id: {}", meeting_id);
+    log_debug!("auth_token present: {}", auth_token.is_some());
     if let Some(ref token) = auth_token {
-        println!("auth_token length: {}", token.len());
+        log_debug!("auth_token length: {}", token.len());
     }
     
     let result = make_api_request::<R, SummaryResponse>(&app, &format!("/get-summary/{}", meeting_id), "GET", None, None, auth_token).await;
     
     match &result {
-        Ok(summary) => println!("✓ api_get_summary successful"),
-        Err(e) => println!("✗ api_get_summary failed: {}", e),
+        Ok(summary) => log_debug!("✓ api_get_summary successful"),
+        Err(e) => log_error!("✗ api_get_summary failed: {}", e),
     }
     
     result
@@ -566,7 +567,7 @@ pub async fn api_save_transcript<R: Runtime>(
     transcripts: Vec<serde_json::Value>,
     auth_token: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    println!("api_save_transcript called for meeting: {}, transcripts: {}, auth_token: {}", 
+    log_info!("api_save_transcript called for meeting: {}, transcripts: {}, auth_token: {}", 
              meeting_title, transcripts.len(), auth_token.is_some());
     
     // Convert serde_json::Value to TranscriptSegment
@@ -598,7 +599,7 @@ pub async fn api_process_transcript<R: Runtime>(
     custom_prompt: Option<String>,
     auth_token: Option<String>,
 ) -> Result<ProcessTranscriptResponse, String> {
-    println!("api_process_transcript called for meeting_id: {:?}, model: {}, auth_token: {}", 
+    log_info!("api_process_transcript called for meeting_id: {:?}, model: {}, auth_token: {}", 
              meeting_id, model, auth_token.is_some());
     
     let process_request = ProcessTranscriptRequest {
@@ -631,7 +632,7 @@ pub async fn debug_store_contents<R: Runtime>(app: AppHandle<R>) -> Result<Strin
         if license_key.is_some() { "present" } else { "missing" }
     );
     
-    println!("{}", debug_info);
+    log_debug!("{}", debug_info);
     Ok(debug_info)
 }
 
@@ -641,12 +642,12 @@ pub async fn test_backend_connection<R: Runtime>(
     app: AppHandle<R>,
     auth_token: Option<String>
 ) -> Result<String, String> {
-    println!("Testing backend connection...");
+    log_debug!("Testing backend connection...");
     
     let client = reqwest::Client::new();
     let server_url = get_server_address(&app).await?;
     
-    println!("Testing connection to: {}", server_url);
+    log_debug!("Testing connection to: {}", server_url);
     
     let mut request = client.get(&format!("{}/docs", server_url));
     
@@ -657,12 +658,12 @@ pub async fn test_backend_connection<R: Runtime>(
     match request.send().await {
         Ok(response) => {
             let status = response.status();
-            println!("Backend responded with status: {}", status);
+            log_debug!("Backend responded with status: {}", status);
             Ok(format!("Backend is reachable. Status: {}", status))
         }
         Err(e) => {
             let error_msg = format!("Failed to connect to backend: {}", e);
-            println!("{}", error_msg);
+            log_debug!("{}", error_msg);
             Err(error_msg)
         }
     }
@@ -672,16 +673,16 @@ pub async fn test_backend_connection<R: Runtime>(
 pub async fn debug_backend_connection<R: Runtime>(
     app: AppHandle<R>,
 ) -> Result<String, String> {
-    println!("=== DEBUG: Testing backend connection ===");
+    log_debug!("=== DEBUG: Testing backend connection ===");
     
     // Test 1: Check server address from store
     let server_url = match get_server_address(&app).await {
         Ok(url) => {
-            println!("✓ Server URL from store: {}", url);
+            log_debug!("✓ Server URL from store: {}", url);
             url
         }
         Err(e) => {
-            println!("✗ Failed to get server URL: {}", e);
+            log_error!("✗ Failed to get server URL: {}", e);
             return Err(format!("Failed to get server URL: {}", e));
         }
     };
@@ -690,16 +691,16 @@ pub async fn debug_backend_connection<R: Runtime>(
     let client = reqwest::Client::new();
     let test_url = format!("{}/docs", server_url); // Try the docs endpoint which should be public
     
-    println!("Testing connection to: {}", test_url);
+    log_debug!("Testing connection to: {}", test_url);
     
     match client.get(&test_url).send().await {
         Ok(response) => {
             let status = response.status();
-            println!("✓ Backend responded with status: {}", status);
+            log_debug!("✓ Backend responded with status: {}", status);
             Ok(format!("Backend connection successful! Status: {}, URL: {}", status, server_url))
         }
         Err(e) => {
-            println!("✗ Backend connection failed: {}", e);
+            log_error!("✗ Backend connection failed: {}", e);
             Err(format!("Backend connection failed: {}", e))
         }
     }

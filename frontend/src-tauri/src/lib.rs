@@ -551,6 +551,40 @@ async fn transcription_worker<R: Runtime>(
                             }
                             ERROR_COUNT = 0;
                             LAST_ERROR_TIME = None;
+                            
+                            // Clean up audio streams when stopping due to errors
+                            tokio::spawn(async {
+                                unsafe {
+                                    // Stop mic stream if it exists
+                                    if let Some(mic_stream) = &MIC_STREAM {
+                                        log_info!("Cleaning up microphone stream after transcription error...");
+                                        if let Err(e) = mic_stream.stop().await {
+                                            log_error!("Error stopping mic stream: {}", e);
+                                        } else {
+                                            log_info!("Microphone stream cleaned up successfully");
+                                        }
+                                    }
+                                    
+                                    // Stop system stream if it exists
+                                    if let Some(system_stream) = &SYSTEM_STREAM {
+                                        log_info!("Cleaning up system stream after transcription error...");
+                                        if let Err(e) = system_stream.stop().await {
+                                            log_error!("Error stopping system stream: {}", e);
+                                        } else {
+                                            log_info!("System stream cleaned up successfully");
+                                        }
+                                    }
+                                    
+                                    // Clear the stream references
+                                    MIC_STREAM = None;
+                                    SYSTEM_STREAM = None;
+                                    IS_RUNNING = None;
+                                    TRANSCRIPTION_TASK = None;
+                                    AUDIO_COLLECTION_TASK = None;
+                                    AUDIO_CHUNK_QUEUE = None;
+                                }
+                            });
+                            
                             return;
                         }
                     }
