@@ -64,6 +64,7 @@ export default function Home() {
   const [showModelSettings, setShowModelSettings] = useState(false);
   const [showErrorAlert, setShowErrorAlert] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isSavingTranscript, setIsSavingTranscript] = useState(false);
 
   const { setCurrentMeeting, setMeetings, meetings, isMeetingActive, setIsMeetingActive, setIsRecording: setSidebarIsRecording , serverAddress} = useSidebar();
   const handleNavigation = useNavigation('', ''); // Initialize with empty values
@@ -71,6 +72,14 @@ export default function Home() {
   
   // Ref for final buffer flush functionality
   const finalFlushRef = useRef<(() => void) | null>(null);
+  
+  // Ref to avoid stale closure issues with transcripts
+  const transcriptsRef = useRef<Transcript[]>(transcripts);
+  
+  // Keep ref updated with current transcripts
+  useEffect(() => {
+    transcriptsRef.current = transcripts;
+  }, [transcripts]);
 
   const modelOptions = {
     ollama: models.map(model => model.name),
@@ -615,11 +624,34 @@ export default function Home() {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Save to SQLite
-      if (isCallApi) {
-        console.log('Saving transcript to database...', transcripts);
+      if (isCallApi && transcriptionComplete == true) {
+
+        // await new Promise(resolve => setTimeout(resolve, 5000));
+        setIsSavingTranscript(true);
+
+        // Fix stale closure issue: Use ref to get fresh transcript state
+        console.log('🔄 Solving stale closure - getting fresh transcript state at save time...');
+        
+        // // Force final buffer flush to capture any remaining transcripts
+        // if (finalFlushRef.current) {
+        //   finalFlushRef.current();
+        // }
+        
+        // // Wait a moment for any final state updates to propagate
+        // await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Get fresh transcript state using ref (avoids stale closure)
+        const freshTranscripts = [...transcriptsRef.current];
+        
+        console.log('💾 Saving transcript to database with fresh state...', {
+          fresh_transcript_count: freshTranscripts.length,
+          sample_text: freshTranscripts.length > 0 ? freshTranscripts[0].text.substring(0, 50) + '...' : 'none',
+          last_transcript: freshTranscripts.length > 0 ? freshTranscripts[freshTranscripts.length - 1].text.substring(0, 30) + '...' : 'none'
+        });
+        
         const responseData = await invoke('api_save_transcript', {
           meetingTitle: meetingTitle,
-          transcripts: transcripts,
+          transcripts: freshTranscripts, // Use fresh state, not stale closure
         }) as any;
 
         const meetingId = responseData.meeting_id;
@@ -653,6 +685,7 @@ export default function Home() {
       console.error('Error in handleRecordingStop2:', error);
       setIsRecordingState(false);
       setSummaryStatus('idle');
+      setIsSavingTranscript(false);
     }
   };
 
@@ -1194,6 +1227,12 @@ export default function Home() {
               <span className="text-sm text-gray-700">Finalizing transcription...</span>
             </div>
           )}
+          {isSavingTranscript && (
+            <div className="absolute bottom-32 left-1/2 transform -translate-x-1/2 z-10 bg-white rounded-lg shadow-lg px-4 py-2 flex items-center space-x-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+              <span className="text-sm text-gray-700">Saving transcript...</span>
+            </div>
+          )}
 
           {/* Model Settings Modal */}
           {showModelSettings && (
@@ -1300,7 +1339,7 @@ export default function Home() {
               />
             </div>
           </div>
-          {isSummaryLoading ? (
+          {/* {isSummaryLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
@@ -1373,7 +1412,7 @@ export default function Home() {
                 </div>
               )}
             </div>
-          )}
+          )} */}
         </div>
       </div>
     </div>
