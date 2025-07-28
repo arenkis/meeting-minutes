@@ -623,13 +623,13 @@ const Sidebar: React.FC = () => {
                     >
                       <StickyNote className="w-4 h-4 mr-2" />
                       <span>{item.title}</span>
-                      <div className="ml-auto">
+                      {/* <div className="ml-auto">
                         {expandedFolders.has(item.id) ? (
                           <ChevronDown className="w-4 h-4 text-gray-500" />
                         ) : (
                           <ChevronRight className="w-4 h-4 text-gray-500" />
                         )}
-                      </div>
+                      </div> */}
                       {searchQuery && item.id === 'meetings' && isSearching && (
                         <span className="ml-2 text-xs text-blue-500 animate-pulse">Searching...</span>
                       )}

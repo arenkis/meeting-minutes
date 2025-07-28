@@ -9,6 +9,7 @@ pub mod audio;
 pub mod ollama;
 pub mod analytics;
 pub mod api;
+pub mod utils;
 
 use audio::{
     default_input_device, default_output_device, AudioStream,
@@ -16,6 +17,7 @@ use audio::{
 };
 use ollama::{OllamaModel};
 use analytics::{AnalyticsClient, AnalyticsConfig};
+use utils::format_timestamp;
 use tauri::{Runtime, AppHandle, Emitter};
 use tauri_plugin_store::StoreExt;
 use log::{info as log_info, error as log_error, debug as log_debug};
@@ -198,7 +200,7 @@ impl TranscriptAccumulator {
             
             let update = TranscriptUpdate {
                 text: sentence.trim().to_string(),
-                timestamp: format!("{:.1}s - {:.1}s", start_elapsed, end_elapsed),
+                timestamp: format!("{} - {}", format_timestamp(start_elapsed), format_timestamp(end_elapsed)),
                 source: "Mixed Audio".to_string(),
                 sequence_id,
                 chunk_start_time: self.current_chunk_start_time,
@@ -232,7 +234,7 @@ impl TranscriptAccumulator {
             
             let update = TranscriptUpdate {
                 text: sentence.trim().to_string(),
-                timestamp: format!("{:.1}s - {:.1}s", start_elapsed, end_elapsed),
+                timestamp: format!("{} - {}", format_timestamp(start_elapsed), format_timestamp(end_elapsed)),
                 source: "Mixed Audio".to_string(),
                 sequence_id,
                 chunk_start_time: self.current_chunk_start_time,
@@ -491,8 +493,8 @@ async fn transcription_worker<R: Runtime>(
                              worker_id, response.segments.len(), chunk.chunk_id);
                     
                     for segment in response.segments {
-                        log_info!("Worker {}: Processing segment: {} ({:.1}s - {:.1}s)", 
-                                 worker_id, segment.text.trim(), segment.t0, segment.t1);
+                        log_info!("Worker {}: Processing segment: {} ({} - {})", 
+                                 worker_id, segment.text.trim(), format_timestamp(segment.t0 as f64), format_timestamp(segment.t1 as f64));
                         
                         // Add segment to accumulator and check for complete sentence
                         if let Some(update) = accumulator.add_segment(&segment) {
@@ -576,9 +578,9 @@ async fn transcription_worker<R: Runtime>(
         let sequence_id = SEQUENCE_COUNTER.fetch_add(1, Ordering::SeqCst);
         let update = TranscriptUpdate {
             text: accumulator.current_sentence.trim().to_string(),
-            timestamp: format!("{:.1}s - {:.1}s", 
-                accumulator.current_chunk_start_time + (accumulator.sentence_start_time as f64 / 1000.0),
-                accumulator.current_chunk_start_time + (accumulator.sentence_start_time as f64 / 1000.0) + 1.0),
+            timestamp: format!("{} - {}", 
+                format_timestamp(accumulator.current_chunk_start_time + (accumulator.sentence_start_time as f64 / 1000.0)),
+                format_timestamp(accumulator.current_chunk_start_time + (accumulator.sentence_start_time as f64 / 1000.0) + 1.0)),
             source: "Mixed Audio".to_string(),
             sequence_id,
             chunk_start_time: accumulator.current_chunk_start_time,
