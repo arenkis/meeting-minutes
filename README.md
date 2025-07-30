@@ -420,6 +420,74 @@ If the application fails to launch:
 xattr -cr /Applications/meetily-frontend.app
 ```
 
+## Developer Console
+
+The developer console provides real-time logging and debugging information for Meetily. It's particularly useful for troubleshooting issues and monitoring application behavior.
+
+### Accessing the Console
+
+#### Option 1: Development Mode (Recommended for Developers)
+When running in development mode, the console is always visible:
+```bash
+pnpm tauri dev
+```
+All logs appear in the terminal where you run this command.
+
+#### Option 2: Production Build with UI Toggle
+1. Navigate to **Settings** in the app
+2. Scroll to the **Developer** section
+3. Use the **Developer Console** toggle to show/hide the console
+   - **Windows**: Controls the console window visibility
+   - **macOS**: Opens Terminal with filtered app logs
+
+#### Option 3: Command Line Access
+
+**macOS:**
+```bash
+# View live logs
+log stream --process meetily-frontend --level info --style compact
+
+# View historical logs (last hour)
+log show --process meetily-frontend --last 1h
+```
+
+**Windows:**
+```bash
+# Run the executable directly to see console output
+./target/release/meetily-frontend.exe
+```
+
+### Console Information
+
+The console displays:
+- Application startup and initialization logs
+- Recording start/stop events
+- Real-time transcription progress
+- API connection status
+- Error messages and stack traces
+- Debug information (when `RUST_LOG=info` is set)
+
+### Use Cases
+
+The console is helpful for:
+- **Debugging audio issues**: See which audio devices are detected and used
+- **Monitoring transcription**: Track progress and identify bottlenecks
+- **Troubleshooting connectivity**: Verify API endpoints and connection status
+- **Performance analysis**: Monitor resource usage and processing times
+- **Error diagnosis**: Get detailed error messages and context
+
+### Console Window Behavior
+
+**Windows:**
+- In release builds, the console window is hidden by default
+- Use the UI toggle or run from terminal to see console output
+- Console can be shown/hidden at runtime without restarting
+
+**macOS:**
+- Uses the system's unified logging
+- Console opens in Terminal.app with filtered logs
+- Logs persist in the system and can be viewed later
+
 ## Uninstallation
 
 To completely remove Meetily:

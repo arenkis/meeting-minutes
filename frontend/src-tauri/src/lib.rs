@@ -10,6 +10,7 @@ pub mod ollama;
 pub mod analytics;
 pub mod api;
 pub mod utils;
+pub mod console_utils;
 
 use audio::{
     default_input_device, default_output_device, AudioStream,
@@ -1467,6 +1468,9 @@ pub fn run() {
             api::test_backend_connection,
             api::debug_backend_connection,
             api::open_external_url,
+            console_utils::show_console,
+            console_utils::hide_console,
+            console_utils::toggle_console,
         ])
         .plugin(tauri_plugin_store::Builder::new().build())
         .run(tauri::generate_context!())
