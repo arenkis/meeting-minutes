@@ -1,5 +1,6 @@
 import React from "react";
 import { invoke } from '@tauri-apps/api/core';
+import Image from 'next/image';
 
 export function About() {
     const handleContactClick = async () => {
@@ -14,7 +15,16 @@ export function About() {
         <div className="p-4 space-y-4 h-full overflow-y-auto">
             {/* Compact Header */}
             <div className="text-center">
-                <h1 className="text-xl font-bold text-gray-900">Meetily</h1>
+                <div className="mb-3">
+                    <Image 
+                        src="icon_128x128.png" 
+                        alt="Meetily Logo" 
+                        width={64} 
+                        height={64}
+                        className="mx-auto"
+                    />
+                </div>
+                {/* <h1 className="text-xl font-bold text-gray-900">Meetily</h1> */}
                 <span className="text-sm text-gray-500"> v0.0.5 - Pre Release</span>
                 <p className="text-medium text-gray-600 mt-1">
                     Real-time notes and summaries that never leave your machine.
