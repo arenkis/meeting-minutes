@@ -209,22 +209,161 @@ cd meeting-minutes/backend
 .\start_with_output.ps1
 ```
 
-**Option 2: Docker Setup (including ARM64/Snapdragon)**
+**Option 2: Docker Setup (including ARM64/Snapdragon) - Recommended**
+
+**For Windows (Enhanced PowerShell Experience):**
+```powershell
+# Clone the repository
+git clone https://github.com/Zackriya-Solutions/meeting-minutes.git
+cd meeting-minutes/backend
+
+# 🎯 Complete Interactive Setup (Recommended for Windows users)
+.\run-docker.ps1 start -Interactive        # Guided configuration with preferences
+
+# 🔧 Enhanced Management & Monitoring  
+.\run-docker.ps1 status                    # Comprehensive health checks + connectivity tests
+.\run-docker.ps1 logs -Follow -Service whisper       # Whisper server logs with controls
+.\run-docker.ps1 logs -Follow -Service app           # Meeting app logs with controls
+.\run-docker.ps1 models list                         # Show cached models with sizes
+.\run-docker.ps1 models download large-v3            # Pre-download with progress tracking
+.\run-docker.ps1 shell -Service whisper              # Interactive container access
+.\run-docker.ps1 stop                                # Graceful service shutdown
+
+# Database Migration Assistant (first time or upgrades)
+.\setup-db.ps1                     # Interactive database discovery and migration
+.\setup-db.ps1 -Auto               # Auto-detect and migrate existing databases
+.\setup-db.ps1 -Fresh              # Fresh installation setup
+
+# Advanced Build Options
+.\build-docker.ps1 cpu              # CPU-only version (universal compatibility)
+.\build-docker.ps1 gpu              # GPU-enabled version (NVIDIA CUDA support)
+.\build-docker.ps1 macos            # macOS-optimized version (Apple Silicon)
+.\build-docker.ps1 both             # Build all versions
+
+# Quick Launch Options (after setup)
+.\run-docker.ps1 start -Detach             # Uses saved preferences or defaults
+.\run-docker.ps1 start -Model large-v3 -Gpu -Detach  # Specific configuration
+.\run-docker.ps1 start -Translate -Diarize -Detach   # Advanced audio processing
+```
+
+**🚀 Windows-Specific Enhanced Features:**
+- **Smart Preferences System**: Automatically saves and reuses your configuration choices
+- **Database Migration Assistant**: Seamless upgrade from existing Meetily installations
+- **Advanced Model Selection**: Visual menu with 20+ models, size estimates, and accuracy ratings
+- **Intelligent Language Detection**: Auto-detect or choose from 25+ languages
+- **Port Conflict Resolution**: Smart port selection with automatic conflict detection
+- **Real-time Progress Tracking**: Visual download progress with time estimates and validation
+- **Interactive Log Management**: Advanced log viewing with service control options
+- **Comprehensive Health Monitoring**: Automatic connectivity tests and detailed service status reporting
+
+**⚠️ Windows Docker Resource Configuration:**
+On Windows systems, Docker Desktop resource limitations can severely impact audio processing:
+```powershell
+# In Docker Desktop Settings -> Resources:
+# - Memory: 8GB minimum (12GB+ recommended)
+# - CPUs: 4+ cores
+# - Disk: 20GB+
+
+# Or configure WSL2 with .wslconfig:
+[wsl2]
+memory=8GB
+processors=4
+```
+
+**For macOS/Linux (using Bash):**
 ```bash
 # Clone the repository
 git clone https://github.com/Zackriya-Solutions/meeting-minutes.git
-cd meeting-minutes
+cd meeting-minutes/backend
 
-# Run the Docker build script (interactive setup)
-.\docker-build.bat
+# Database setup (first time)
+./setup-db.sh               # Interactive setup
+./setup-db.sh --auto        # Auto-detect existing DB
+./setup-db.sh --fresh       # Fresh installation
+
+# Build Docker images
+./build-docker.sh cpu       # CPU-only version
+./build-docker.sh gpu       # GPU-enabled version  
+./build-docker.sh both      # Build both versions
+
+# Start services - Interactive Setup (Recommended)
+./run-docker.sh start --interactive  # Guided setup with model/language selection
+
+# Start services - Quick Commands
+./run-docker.sh start --detach
+./run-docker.sh start --model large-v3 --port 8081 --detach
+./run-docker.sh start --gpu --detach
+
+# Management commands
+./run-docker.sh status              # Check service health
+./run-docker.sh logs --follow       # View logs with interactive options
+./run-docker.sh models download base.en  # Pre-download models
+./run-docker.sh stop                # Stop services
 ```
 
 ### Docker Configuration Options
 
-The Docker setup for both macOS and Windows allows you to configure:
-- Whisper model selection (tiny, base, small, medium, large-v3, etc.)
-- Language preference (auto-detection or specific language)
-- Logging level
+**✅ Working Solution Features:**
+- ✅ **Universal Compatibility**: Works on any system with Docker installed
+- ✅ **Automatic GPU Detection**: Uses GPU acceleration when available, gracefully falls back to CPU
+- ✅ **Cross-Platform**: Supports AMD64 and ARM64 architectures (including Apple Silicon)
+- ✅ **Zero Dependencies**: All libraries included in container
+- ✅ **Interactive Setup**: Guided model and language selection with size/accuracy information
+- ✅ **Smart Model Management**: Automatic downloading with progress tracking and pre-download options
+- ✅ **Enhanced User Experience**: Clear progress feedback, health checks, and intuitive log management
+- ✅ **AI Integration**: Built-in meeting summarization with multiple AI providers
+- ✅ **Database Migration**: Seamless upgrade from existing Meetily installations
+
+**🚀 New Interactive Features:**
+- **🎯 Smart Model Selection**: Interactive menu with 20+ models, size estimates, and accuracy guidance
+- **🌐 Language Detection**: Auto-detection or guided selection from 25+ languages
+- **📊 Progress Tracking**: Real-time download progress with size/time estimates
+- **🔄 Interactive Logs**: Press Ctrl+C during log viewing for service management options
+- **💡 Intelligent Prompts**: Context-aware setup assistance and troubleshooting guidance
+- **⚡ Health Monitoring**: Automatic service health checks with connectivity tests
+
+**Configuration Options:**
+- **Whisper Models**: tiny, base, small, medium, large-v3, tiny.en, base.en, small.en, medium.en
+- **Language Settings**: Auto-detection or specific language codes:
+  - `en` (English), `es` (Spanish), `fr` (French), `de` (German), `it` (Italian)
+  - `pt` (Portuguese), `ru` (Russian), `ja` (Japanese), `ko` (Korean), `zh` (Chinese)
+  - `ar` (Arabic), `hi` (Hindi), `tr` (Turkish), `pl` (Polish), `nl` (Dutch)
+  - `auto` (Auto-detection - recommended for mixed language content)
+- **GPU Support**: NVIDIA GPU with CUDA, CPU fallback
+- **AI Providers**: OpenAI, Claude, Groq, Ollama integration
+- **Database**: Automatic migration from existing installations
+
+**Service Access:**
+- **Whisper Server**: http://localhost:8178 (transcription service)
+- **Meeting App**: http://localhost:5167 (AI-powered meeting management)
+- **API Documentation**: http://localhost:5167/docs
+
+**Management Commands:**
+```powershell
+# Windows PowerShell (Enhanced Features)
+.\run-docker.ps1 status                           # Comprehensive health checks + connectivity tests
+.\run-docker.ps1 logs -Follow -Service whisper    # Whisper server logs with interactive controls
+.\run-docker.ps1 logs -Follow -Service app        # Meeting app logs with interactive controls
+.\run-docker.ps1 shell -Service whisper          # Interactive shell access to containers
+.\run-docker.ps1 models list                      # Show cached models with sizes
+.\run-docker.ps1 models download large-v3         # Pre-download with progress tracking
+.\run-docker.ps1 gpu-test                         # Comprehensive GPU detection and testing
+.\run-docker.ps1 stop                             # Graceful service shutdown
+```
+
+```bash
+# macOS/Linux Bash
+./run-docker.sh status               # Check service status
+./run-docker.sh logs --follow        # View logs
+./run-docker.sh stop                 # Stop services
+./run-docker.sh gpu-test             # Test GPU availability
+```
+
+**Prerequisites:**
+- **Docker Desktop** (Mac/Windows) or **Docker Engine** (Linux)
+- **PowerShell 5.1+** (Windows) or **Bash** (macOS/Linux)
+- **NVIDIA Docker** (optional, for GPU support)
+- **2GB+ RAM**, **1GB+ disk space**
 
 ## For macOS:
 

@@ -1,5 +1,6 @@
 import aiosqlite
 import json
+import os
 from datetime import datetime
 from typing import Optional, Dict
 import logging
@@ -9,7 +10,9 @@ import sqlite3
 logger = logging.getLogger(__name__)
 
 class DatabaseManager:
-    def __init__(self, db_path: str = "meeting_minutes.db"):
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            db_path = os.getenv('DATABASE_PATH', 'meeting_minutes.db')
         self.db_path = db_path
         self._init_db()
 
