@@ -65,6 +65,7 @@ export default function Home() {
   const [showErrorAlert, setShowErrorAlert] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isSavingTranscript, setIsSavingTranscript] = useState(false);
+  const [isRecordingDisabled, setIsRecordingDisabled] = useState(false);
 
   const { setCurrentMeeting, setMeetings, meetings, isMeetingActive, setIsMeetingActive, setIsRecording: setSidebarIsRecording , serverAddress} = useSidebar();
   const handleNavigation = useNavigation('', ''); // Initialize with empty values
@@ -507,6 +508,7 @@ export default function Home() {
   };
 
   const handleRecordingStop2 = async (isCallApi: boolean) => {
+    setIsRecordingDisabled(true);
     const stopStartTime = Date.now();
     try {
       console.log('Stopping recording (new implementation)...', {
@@ -675,6 +677,7 @@ export default function Home() {
       }
       setIsMeetingActive(false);
       setIsRecordingState(false);
+      setIsRecordingDisabled(false);
       // Show summary button if we have transcript content
       if (transcripts.length > 0) {
         setShowSummary(true);
@@ -686,6 +689,7 @@ export default function Home() {
       setIsRecordingState(false);
       setSummaryStatus('idle');
       setIsSavingTranscript(false);
+      setIsRecordingDisabled(false);
     }
   };
 
@@ -1216,6 +1220,7 @@ export default function Home() {
                   setErrorMessage(message);
                   setShowErrorAlert(true);
                 }}
+                isRecordingDisabled={isRecordingDisabled}
               />
             </div>
           </div>

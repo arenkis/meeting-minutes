@@ -201,7 +201,7 @@ impl TranscriptAccumulator {
             
             let update = TranscriptUpdate {
                 text: sentence.trim().to_string(),
-                timestamp: format!("{} - {}", format_timestamp(start_elapsed), format_timestamp(end_elapsed)),
+                timestamp: format!("{}", format_timestamp(start_elapsed)),
                 source: "Mixed Audio".to_string(),
                 sequence_id,
                 chunk_start_time: self.current_chunk_start_time,
@@ -235,7 +235,7 @@ impl TranscriptAccumulator {
             
             let update = TranscriptUpdate {
                 text: sentence.trim().to_string(),
-                timestamp: format!("{} - {}", format_timestamp(start_elapsed), format_timestamp(end_elapsed)),
+                timestamp: format!("{}", format_timestamp(start_elapsed)),
                 source: "Mixed Audio".to_string(),
                 sequence_id,
                 chunk_start_time: self.current_chunk_start_time,
@@ -613,9 +613,7 @@ async fn transcription_worker<R: Runtime>(
         let sequence_id = SEQUENCE_COUNTER.fetch_add(1, Ordering::SeqCst);
         let update = TranscriptUpdate {
             text: accumulator.current_sentence.trim().to_string(),
-            timestamp: format!("{} - {}", 
-                format_timestamp(accumulator.current_chunk_start_time + (accumulator.sentence_start_time as f64 / 1000.0)),
-                format_timestamp(accumulator.current_chunk_start_time + (accumulator.sentence_start_time as f64 / 1000.0) + 1.0)),
+            timestamp: format!("{}", format_timestamp(accumulator.current_chunk_start_time + (accumulator.sentence_start_time as f64 / 1000.0))),
             source: "Mixed Audio".to_string(),
             sequence_id,
             chunk_start_time: accumulator.current_chunk_start_time,
