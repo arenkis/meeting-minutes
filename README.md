@@ -146,12 +146,41 @@ While there are many meeting transcription tools available, this solution stands
 
 ## Prerequisites
 
-- Node.js 18+
-- Python 3.10+
-- FFmpeg
-- Rust 1.65+ (for experimental features)
-- Cmake 3.22+ (for building the frontend)
-- For Windows: Visual Studio Build Tools with C++ development workload
+### For Docker Setup (Recommended)
+- Docker Desktop (Windows/Mac) or Docker Engine (Linux)
+- 8GB+ RAM allocated to Docker
+- 2GB+ disk space
+- For GPU: NVIDIA drivers + nvidia-container-toolkit
+
+### For Native Setup
+- **System Requirements:**
+  - Python 3.9+ (recommended: 3.10 or 3.11)
+  - Node.js 18+ (recommended: 18.x or 20.x LTS)
+  - Git (with submodules support)
+  - 8GB+ RAM (recommended for Whisper models)
+  - 4GB+ free disk space
+
+- **Required Dependencies:**
+  - **FFmpeg** (for audio processing):
+    - Windows: `winget install FFmpeg` or download from [ffmpeg.org](https://ffmpeg.org/download.html)
+    - macOS: `brew install ffmpeg`
+    - Linux: `sudo apt-get install ffmpeg` (Ubuntu/Debian) or `sudo yum install ffmpeg` (RHEL/CentOS)
+  - **CMake 3.22+** (for building Whisper.cpp)
+  - **C++ compiler** (platform-specific, see below)
+
+- **Platform-Specific Build Tools:**
+  - **Windows**: 
+    - Visual Studio Build Tools 2019+ with C++ development workload
+    - PowerShell 5.0+ (for running scripts)
+  - **macOS**: 
+    - Xcode Command Line Tools: `xcode-select --install`
+    - Homebrew: `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+  - **Linux**: 
+    - Build essentials: `sudo apt-get install build-essential cmake git`
+
+- **Optional (for LLM features):**
+  - Ollama (for local LLM models)
+  - API keys for Claude/Groq (for external LLM providers)
 
 
 # Setup Instructions
@@ -209,161 +238,76 @@ cd meeting-minutes/backend
 .\start_with_output.ps1
 ```
 
-**Option 2: Docker Setup (including ARM64/Snapdragon) - Recommended**
+**Option 2: Docker Setup (Recommended - Easiest)**
 
-**For Windows (Enhanced PowerShell Experience):**
-```powershell
-# Clone the repository
-git clone https://github.com/Zackriya-Solutions/meeting-minutes.git
-cd meeting-minutes/backend
-
-# 🎯 Complete Interactive Setup (Recommended for Windows users)
-.\run-docker.ps1 start -Interactive        # Guided configuration with preferences
-
-# 🔧 Enhanced Management & Monitoring  
-.\run-docker.ps1 status                    # Comprehensive health checks + connectivity tests
-.\run-docker.ps1 logs -Follow -Service whisper       # Whisper server logs with controls
-.\run-docker.ps1 logs -Follow -Service app           # Meeting app logs with controls
-.\run-docker.ps1 models list                         # Show cached models with sizes
-.\run-docker.ps1 models download large-v3            # Pre-download with progress tracking
-.\run-docker.ps1 shell -Service whisper              # Interactive container access
-.\run-docker.ps1 stop                                # Graceful service shutdown
-
-# Database Migration Assistant (first time or upgrades)
-.\setup-db.ps1                     # Interactive database discovery and migration
-.\setup-db.ps1 -Auto               # Auto-detect and migrate existing databases
-.\setup-db.ps1 -Fresh              # Fresh installation setup
-
-# Advanced Build Options
-.\build-docker.ps1 cpu              # CPU-only version (universal compatibility)
-.\build-docker.ps1 gpu              # GPU-enabled version (NVIDIA CUDA support)
-.\build-docker.ps1 macos            # macOS-optimized version (Apple Silicon)
-.\build-docker.ps1 both             # Build all versions
-
-# Quick Launch Options (after setup)
-.\run-docker.ps1 start -Detach             # Uses saved preferences or defaults
-.\run-docker.ps1 start -Model large-v3 -Gpu -Detach  # Specific configuration
-.\run-docker.ps1 start -Translate -Diarize -Detach   # Advanced audio processing
-```
-
-**🚀 Windows-Specific Enhanced Features:**
-- **Smart Preferences System**: Automatically saves and reuses your configuration choices
-- **Database Migration Assistant**: Seamless upgrade from existing Meetily installations
-- **Advanced Model Selection**: Visual menu with 20+ models, size estimates, and accuracy ratings
-- **Intelligent Language Detection**: Auto-detect or choose from 25+ languages
-- **Port Conflict Resolution**: Smart port selection with automatic conflict detection
-- **Real-time Progress Tracking**: Visual download progress with time estimates and validation
-- **Interactive Log Management**: Advanced log viewing with service control options
-- **Comprehensive Health Monitoring**: Automatic connectivity tests and detailed service status reporting
-
-**⚠️ Windows Docker Resource Configuration:**
-On Windows systems, Docker Desktop resource limitations can severely impact audio processing:
-```powershell
-# In Docker Desktop Settings -> Resources:
-# - Memory: 8GB minimum (12GB+ recommended)
-# - CPUs: 4+ cores
-# - Disk: 20GB+
-
-# Or configure WSL2 with .wslconfig:
-[wsl2]
-memory=8GB
-processors=4
-```
-
-**For macOS/Linux (using Bash):**
-```bash
-# Clone the repository
-git clone https://github.com/Zackriya-Solutions/meeting-minutes.git
-cd meeting-minutes/backend
-
-# Database setup (first time)
-./setup-db.sh               # Interactive setup
-./setup-db.sh --auto        # Auto-detect existing DB
-./setup-db.sh --fresh       # Fresh installation
-
-# Build Docker images
-./build-docker.sh cpu       # CPU-only version
-./build-docker.sh gpu       # GPU-enabled version  
-./build-docker.sh both      # Build both versions
-
-# Start services - Interactive Setup (Recommended)
-./run-docker.sh start --interactive  # Guided setup with model/language selection
-
-# Start services - Quick Commands
-./run-docker.sh start --detach
-./run-docker.sh start --model large-v3 --port 8081 --detach
-./run-docker.sh start --gpu --detach
-
-# Management commands
-./run-docker.sh status              # Check service health
-./run-docker.sh logs --follow       # View logs with interactive options
-./run-docker.sh models download base.en  # Pre-download models
-./run-docker.sh stop                # Stop services
-```
-
-### Docker Configuration Options
-
-**✅ Working Solution Features:**
-- ✅ **Universal Compatibility**: Works on any system with Docker installed
-- ✅ **Automatic GPU Detection**: Uses GPU acceleration when available, gracefully falls back to CPU
-- ✅ **Cross-Platform**: Supports AMD64 and ARM64 architectures (including Apple Silicon)
-- ✅ **Zero Dependencies**: All libraries included in container
-- ✅ **Interactive Setup**: Guided model and language selection with size/accuracy information
-- ✅ **Smart Model Management**: Automatic downloading with progress tracking and pre-download options
-- ✅ **Enhanced User Experience**: Clear progress feedback, health checks, and intuitive log management
-- ✅ **AI Integration**: Built-in meeting summarization with multiple AI providers
-- ✅ **Database Migration**: Seamless upgrade from existing Meetily installations
-
-**🚀 New Interactive Features:**
-- **🎯 Smart Model Selection**: Interactive menu with 20+ models, size estimates, and accuracy guidance
-- **🌐 Language Detection**: Auto-detection or guided selection from 25+ languages
-- **📊 Progress Tracking**: Real-time download progress with size/time estimates
-- **🔄 Interactive Logs**: Press Ctrl+C during log viewing for service management options
-- **💡 Intelligent Prompts**: Context-aware setup assistance and troubleshooting guidance
-- **⚡ Health Monitoring**: Automatic service health checks with connectivity tests
-
-**Configuration Options:**
-- **Whisper Models**: tiny, base, small, medium, large-v3, tiny.en, base.en, small.en, medium.en
-- **Language Settings**: Auto-detection or specific language codes:
-  - `en` (English), `es` (Spanish), `fr` (French), `de` (German), `it` (Italian)
-  - `pt` (Portuguese), `ru` (Russian), `ja` (Japanese), `ko` (Korean), `zh` (Chinese)
-  - `ar` (Arabic), `hi` (Hindi), `tr` (Turkish), `pl` (Polish), `nl` (Dutch)
-  - `auto` (Auto-detection - recommended for mixed language content)
-- **GPU Support**: NVIDIA GPU with CUDA, CPU fallback
-- **AI Providers**: OpenAI, Claude, Groq, Ollama integration
-- **Database**: Automatic migration from existing installations
-
-**Service Access:**
-- **Whisper Server**: http://localhost:8178 (transcription service)
-- **Meeting App**: http://localhost:5167 (AI-powered meeting management)
-- **API Documentation**: http://localhost:5167/docs
-
-**Management Commands:**
-```powershell
-# Windows PowerShell (Enhanced Features)
-.\run-docker.ps1 status                           # Comprehensive health checks + connectivity tests
-.\run-docker.ps1 logs -Follow -Service whisper    # Whisper server logs with interactive controls
-.\run-docker.ps1 logs -Follow -Service app        # Meeting app logs with interactive controls
-.\run-docker.ps1 shell -Service whisper          # Interactive shell access to containers
-.\run-docker.ps1 models list                      # Show cached models with sizes
-.\run-docker.ps1 models download large-v3         # Pre-download with progress tracking
-.\run-docker.ps1 gpu-test                         # Comprehensive GPU detection and testing
-.\run-docker.ps1 stop                             # Graceful service shutdown
-```
-
-```bash
-# macOS/Linux Bash
-./run-docker.sh status               # Check service status
-./run-docker.sh logs --follow        # View logs
-./run-docker.sh stop                 # Stop services
-./run-docker.sh gpu-test             # Test GPU availability
-```
+Docker provides the easiest setup with automatic dependency management, GPU detection, and cross-platform compatibility.
 
 **Prerequisites:**
-- **Docker Desktop** (Mac/Windows) or **Docker Engine** (Linux)
-- **PowerShell 5.1+** (Windows) or **Bash** (macOS/Linux)
-- **NVIDIA Docker** (optional, for GPU support)
-- **2GB+ RAM**, **1GB+ disk space**
+- Docker Desktop (Windows/Mac) or Docker Engine (Linux)
+- 8GB+ RAM allocated to Docker
+- For GPU: NVIDIA drivers + nvidia-container-toolkit
+
+**Quick Start:**
+
+```bash
+# Clone the repository
+git clone https://github.com/Zackriya-Solutions/meeting-minutes.git
+cd meeting-minutes/backend
+
+# Windows (PowerShell)
+.\build-docker.ps1 cpu                     # Build CPU version
+.\run-docker.ps1 start -Interactive        # Interactive setup (recommended)
+# OR
+.\run-docker.ps1 start -Detach            # Quick start with defaults
+
+# macOS/Linux (Bash)
+./build-docker.sh cpu                      # Build CPU version
+./run-docker.sh start --interactive        # Interactive setup (recommended)
+# OR
+./run-docker.sh start --detach            # Quick start with defaults
+```
+
+**After startup, access:**
+- **Whisper Server**: http://localhost:8178
+- **Meeting App**: http://localhost:5167 (with API docs at `/docs`)
+
+**Basic Commands:**
+
+```bash
+# Windows PowerShell
+.\run-docker.ps1 stop                     # Stop services
+.\run-docker.ps1 status                   # Check service health
+.\run-docker.ps1 logs -Follow             # View logs
+
+# macOS/Linux Bash
+./run-docker.sh stop                       # Stop services
+./run-docker.sh status                     # Check service health
+./run-docker.sh logs --follow              # View logs
+```
+
+**Advanced Options:**
+- **GPU Support**: Use `.\build-docker.ps1 gpu` or `./build-docker.sh gpu`
+- **Custom Model**: Add `-Model large-v3` or `--model large-v3`
+- **Language**: Add `-Language es` or `--language es`
+- **Different Ports**: Add `-Port 8081 -AppPort 5168` or `--port 8081 --app-port 5168`
+
+For comprehensive Docker documentation including model selection guide, GPU configuration, and troubleshooting, see [backend/README.md](backend/README.md#-docker-deployment-recommended).
+
+**⚠️ Important Notes:**
+
+### Audio Processing Requirements
+When running in Docker containers, audio processing can drop chunks due to resource limitations:
+
+**Symptoms:**
+- Log messages: "Dropped old audio chunk X due to queue overflow"
+- Missing or incomplete transcriptions
+- Processing delays
+
+**Prevention:**
+- Allocate **8GB+ RAM** to Docker containers
+- Ensure adequate CPU allocation (4+ cores recommended)
+- Use appropriate Whisper model size for your hardware
+- Monitor container resource usage with `docker stats`
 
 ## For macOS:
 
@@ -473,18 +417,29 @@ chmod +x clean_build.sh
 
 When setting up the backend (either via Homebrew, manual installation, or Docker), you can choose from various Whisper models based on your needs:
 
+#### Model Size Guide
+
+| Model | Size | Accuracy | Speed | Best For |
+|-------|------|----------|-------|----------|
+| tiny | ~39 MB | Basic | Fastest | Testing, low resources |
+| base | ~142 MB | Good | Fast | General use (recommended) |
+| small | ~244 MB | Better | Medium | Better accuracy needed |
+| medium | ~769 MB | High | Slow | High accuracy requirements |
+| large-v3 | ~1550 MB | Best | Slowest | Maximum accuracy |
+
+#### Available Models
+
 1. **Standard models** (balance of accuracy and speed):
-   - tiny, base, small, medium
+   - tiny, base, small, medium, large-v1, large-v2, large-v3, large-v3-turbo
 
 2. **English-optimized models** (faster for English content):
    - tiny.en, base.en, small.en, medium.en
 
-3. **Advanced models** (for special needs):
-   - large-v3, large-v3-turbo
-   - small.en-tdrz (with speaker diarization)
+3. **Quantized models** (reduced size, slightly lower quality):
+   - *-q5_1 (5-bit quantized), *-q8_0 (8-bit quantized)
+   - Example: tiny-q5_1, base-q5_1, small-q5_1, medium-q5_0
 
-4. **Quantized models** (reduced size, slightly lower quality):
-   - tiny-q5_1, base-q5_1, small-q5_1, medium-q5_0
+**Recommendation:** Start with `base` model for general use, or `base.en` if you're only transcribing English content.
 
 
 ### Known issues
@@ -506,7 +461,81 @@ The backend supports multiple LLM providers through a unified interface. Current
 
 ## Troubleshooting
 
-### Backend Issues
+### Docker Issues
+
+#### Port Conflicts
+```bash
+# Stop services
+./run-docker.sh stop  # or .\run-docker.ps1 stop
+
+# Check port usage
+netstat -an | grep :8178
+lsof -i :8178  # macOS/Linux
+```
+
+#### GPU Not Detected (Windows)
+- Enable WSL2 integration in Docker Desktop
+- Install nvidia-container-toolkit
+- Verify with: `.\run-docker.ps1 gpu-test`
+
+#### Model Download Failures
+```bash
+# Manual download
+./run-docker.sh models download base.en
+# or
+.\run-docker.ps1 models download base.en
+```
+
+#### Audio Processing Issues
+If you see "Dropped old audio chunk X due to queue overflow" messages:
+
+1. **Increase Docker Resources** (most important):
+   - Memory: 8GB minimum (12GB+ recommended)
+   - CPUs: 4+ cores recommended
+   - Disk: 20GB+ available space
+
+2. **Use smaller Whisper model**:
+   ```bash
+   ./run-docker.sh start --model base --detach
+   ```
+
+3. **Check container resource usage**:
+   ```bash
+   docker stats
+   ```
+
+### Native Installation Issues
+
+#### Windows Build Problems
+```cmd
+# CMake not found - install Visual Studio Build Tools
+# PowerShell execution blocked:
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+```
+
+#### macOS Build Problems
+```bash
+# Compilation errors
+brew install cmake llvm libomp
+export CC=/opt/homebrew/bin/clang
+export CXX=/opt/homebrew/bin/clang++
+
+# Permission denied
+chmod +x build_whisper.sh
+chmod +x clean_start_backend.sh
+
+# Port conflicts
+lsof -i :5167  # Find process using port
+kill -9 PID   # Kill process
+```
+
+### General Issues
+
+#### Services Won't Start
+1. Check if ports 8178 (Whisper) and 5167 (Backend) are available
+2. Verify all dependencies are installed
+3. Check logs for specific error messages
+4. Ensure sufficient system resources (8GB+ RAM recommended)
 
 #### Model Problems
 
@@ -558,6 +587,79 @@ If the application fails to launch:
 # Clear quarantine attributes
 xattr -cr /Applications/meetily-frontend.app
 ```
+
+## Docker Script Reference
+
+### build-docker.ps1 / build-docker.sh
+Build Docker images with GPU support and cross-platform compatibility.
+
+**Usage:**
+```bash
+# Build Types
+cpu, gpu, macos, both, test-gpu
+
+# Options
+-Registry/-r REGISTRY    # Docker registry
+-Push/-p                 # Push to registry
+-Tag/-t TAG             # Custom tag
+-Platforms PLATFORMS    # Target platforms
+-BuildArgs ARGS         # Build arguments
+-NoCache/--no-cache     # Build without cache
+-DryRun/--dry-run       # Show commands only
+```
+
+**Examples:**
+```bash
+# Basic builds
+.\build-docker.ps1 cpu
+./build-docker.sh gpu
+
+# Multi-platform with registry
+.\build-docker.ps1 both -Registry "ghcr.io/user" -Push
+./build-docker.sh cpu --platforms "linux/amd64,linux/arm64" --push
+```
+
+### run-docker.ps1 / run-docker.sh
+Complete Docker deployment manager with interactive setup.
+
+**Commands:**
+```bash
+start, stop, restart, logs, status, shell, clean, build, models, gpu-test, setup-db, compose
+```
+
+**Start Options:**
+```bash
+-Model/-m MODEL         # Whisper model (default: base.en)
+-Port/-p PORT          # Whisper port (default: 8178)
+-AppPort/--app-port    # Meeting app port (default: 5167)
+-Gpu/-g/--gpu          # Force GPU mode
+-Cpu/-c/--cpu          # Force CPU mode
+-Language/--language   # Language code (default: auto)
+-Translate/--translate # Enable translation
+-Diarize/--diarize     # Enable diarization
+-Detach/-d/--detach    # Run in background
+-Interactive/-i        # Interactive setup
+```
+
+**Examples:**
+```bash
+# Interactive setup
+.\run-docker.ps1 start -Interactive
+./run-docker.sh start --interactive
+
+# Advanced configuration
+.\run-docker.ps1 start -Model large-v3 -Gpu -Language es -Detach
+./run-docker.sh start --model base --translate --diarize --detach
+
+# Management
+.\run-docker.ps1 logs -Service whisper -Follow
+./run-docker.sh logs --service app --follow --lines 100
+```
+
+**Service URLs:**
+- **Whisper Server**: http://localhost:8178 (transcription service)
+- **Meeting App**: http://localhost:5167 (AI-powered meeting management)
+- **API Documentation**: http://localhost:5167/docs
 
 ## Developer Console
 
