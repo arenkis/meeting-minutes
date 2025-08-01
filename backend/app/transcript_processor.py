@@ -271,8 +271,8 @@ class TranscriptProcessor:
         try:
             # Close database connections if any
             if hasattr(self, 'db') and self.db is not None:
-                self.db.close()
-                logger.info("Database connection closed")
+                # self.db.close()
+                logger.info("Database connection cleanup (using context managers)")
                 
             # Cancel any active Ollama client sessions
             if hasattr(self, 'active_clients') and self.active_clients:
