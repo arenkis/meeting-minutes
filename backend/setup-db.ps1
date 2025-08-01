@@ -14,7 +14,7 @@ $ErrorActionPreference = "Stop"
 
 # Configuration
 $ScriptDir = $PSScriptRoot
-$DefaultDbPath = "/opt/homebrew/Cellar/meetily-backend/0.0.4/backend/meeting_minutes.db"
+$DefaultDbPath = "./meeting_minutes.db"
 $DockerDbDir = Join-Path $ScriptDir "data"
 $DockerDbPath = Join-Path $DockerDbDir "meeting_minutes.db"
 
@@ -74,13 +74,9 @@ function Test-Database {
         return $false
     }
     
-    # Check if it's a valid SQLite database
-    try {
-        $null = & sqlite3 $DbPath "SELECT name FROM sqlite_master WHERE type='table' LIMIT 1;" 2>$null
-        return $true
-    } catch {
-        return $false
-    }
+    # Simple file validation - just check if it's a .db file and not empty
+    $fileInfo = Get-Item $DbPath
+    return ($fileInfo.Extension -eq '.db' -and $fileInfo.Length -gt 0)
 }
 
 # Function to get database info
@@ -96,24 +92,7 @@ function Get-DatabaseInfo {
     Write-Host "  Path: $DbPath"
     Write-Host "  Size: $sizeDisplay"
     Write-Host "  Modified: $($fileInfo.LastWriteTime)"
-    
-    # Try to get table counts
-    try {
-        $meetingsCount = & sqlite3 $DbPath "SELECT COUNT(*) FROM meetings;" 2>$null
-        if (-not $meetingsCount) { $meetingsCount = "0" }
-    } catch {
-        $meetingsCount = "0"
-    }
-    
-    try {
-        $transcriptsCount = & sqlite3 $DbPath "SELECT COUNT(*) FROM transcripts;" 2>$null
-        if (-not $transcriptsCount) { $transcriptsCount = "0" }
-    } catch {
-        $transcriptsCount = "0"
-    }
-    
-    Write-Host "  Meetings: $meetingsCount"
-    Write-Host "  Transcripts: $transcriptsCount"
+    Write-Host "  Type: SQLite Database (.db file)"
 }
 
 # Function to copy database
@@ -134,7 +113,7 @@ function Copy-Database {
     # Copy the database file
     Copy-Item -Path $SourcePath -Destination $DestPath -Force
     
-    Write-Info "✓ Database copied successfully"
+    Write-Info " Database copied successfully"
 }
 
 # Function to find existing databases
@@ -195,9 +174,9 @@ function Start-InteractiveSetup {
         Write-Info "No existing databases found."
         Write-Host ""
         Write-Host "Options:"
-        Write-Host "1) First-time installation (create fresh database)"
-        Write-Host "2) I have an existing database at a custom location"
-        Write-Host "3) Exit"
+        Write-Host "1 First-time installation - create fresh database"
+        Write-Host "2 I have an existing database at a custom location"
+        Write-Host "3 Exit"
         Write-Host ""
         $choice = Read-Host "Please choose an option (1-3)"
         
@@ -300,7 +279,7 @@ function New-FreshDatabase {
         Remove-Item $DockerDbPath -Force
     }
     
-    Write-Info "✓ Fresh database setup complete"
+    Write-Info "Fresh database setup complete"
     Write-Info "The application will create a new database on first run"
 }
 
@@ -332,12 +311,7 @@ function Main {
         exit 0
     }
     
-    # Check if sqlite3 is available
-    if (-not (Get-Command sqlite3 -ErrorAction SilentlyContinue)) {
-        Write-Error "sqlite3 is required but not installed"
-        Write-Error "Please install sqlite3 and try again"
-        exit 1
-    }
+    # No sqlite3 required - using simple file-based validation
     
     if ($Fresh) {
         New-FreshDatabase
@@ -355,9 +329,9 @@ function Main {
         Start-InteractiveSetup
     }
     
-    Write-Info "=== Database Setup Complete ==="
-    Write-Info "Database location: $DockerDbPath"
-    Write-Info "You can now start the services with: .\run-docker.ps1 compose up -d"
+    Write-Info '=== Database Setup Complete ==='
+    Write-Host "Database location: $DockerDbPath"
+    Write-Info 'You can now start the services with: .\run-docker.ps1 compose up -d'
 }
 
 # Execute main function

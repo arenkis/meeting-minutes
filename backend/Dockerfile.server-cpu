@@ -63,7 +63,8 @@ COPY --from=builder /app/whisper.cpp/examples/server/public/ /app/public/
 
 # Copy entrypoint script
 COPY docker/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && \
+    sed -i 's/\r$//' /app/entrypoint.sh
 
 # Set ownership
 RUN chown -R whisper:whisper /app

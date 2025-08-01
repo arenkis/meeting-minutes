@@ -41,12 +41,10 @@ services:
     
     # Volume mounts
     volumes:
-      # Model storage - persistent across container restarts
-      - whisper_models:/app/models
+      # Model storage - use local directory for better sync
+      - ${LOCAL_MODELS_DIR:-./models}:/app/models
       # Upload directory for temporary files
       - whisper_uploads:/app/uploads
-      # Optional: mount local models directory
-      - ${LOCAL_MODELS_DIR:-./models}:/app/local_models:ro
       # Optional: mount custom configuration
       - ${CONFIG_DIR:-./config}:/app/config:ro
     
@@ -126,7 +124,7 @@ services:
     image: alpine/curl:latest
     container_name: whisper-model-downloader
     volumes:
-      - whisper_models:/models
+      - ${LOCAL_MODELS_DIR:-./models}:/models
     environment:
       - MODEL_NAME=${MODEL_NAME:-base.en}
     command: |
