@@ -94,13 +94,13 @@ services:
       - macos
     
     # GPU support (uncomment for GPU version)
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
     
     # Health check
     healthcheck:
