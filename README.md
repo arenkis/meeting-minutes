@@ -2,7 +2,7 @@
     <h1>
         <img src="docs/Meetily-6.png" style="border-radius: 10px;" />
         <br>
-        Your AI-Powered Meeting Assistant
+        Privacy-First AI Meeting Assistant
     </h1>
     <a href="https://trendshift.io/repositories/13272" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13272" alt="Zackriya-Solutions%2Fmeeting-minutes | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
     <br>
@@ -18,18 +18,19 @@
     <br>
     <h3>
     <br>
-    Open source Ai Assistant for taking meeting notes
+    Open Source • Privacy-First • Enterprise-Ready
     </h3>
     <p align="center">
     Get latest <a href="https://www.zackriya.com/meetily-subscribe/"><b>Product updates</b></a> <br><br>
     <a href="https://meetily.zackriya.com"><b>Website</b></a> •
-    <a href="https://in.linkedin.com/company/zackriya-solutions"><b>Authors</b></a>
-    •
-    <a href="https://discord.gg/crRymMQBFH"><b>Discord Channel</b></a>
+    <a href="https://www.linkedin.com/company/106363062/"><b>LinkedIn</b></a> •
+    <a href="https://discord.gg/crRymMQBFH"><b>Meetily Discord</b></a> •
+    <a href="https://discord.com/invite/vCFJvN4BwJ"><b>Privacy-First AI</b></a> •
+    <a href="https://www.reddit.com/r/meetily/"><b>Reddit</b></a>
 </p>
     <p align="center">
     
- An AI-Powered Meeting Assistant that captures live meeting audio, transcribes it in real-time, and generates summaries while ensuring user privacy. Perfect for teams who want to focus on discussions while automatically capturing and organizing meeting content without the need for external servers or complex infrastructure. 
+ A privacy-first AI meeting assistant that captures, transcribes, and summarizes meetings entirely on your infrastructure. Built by expert AI engineers passionate about data sovereignty and open source solutions. Perfect for enterprises that need advanced meeting intelligence without compromising on privacy, compliance, or control. 
 </p>
 
 <p align="center">
@@ -42,7 +43,10 @@
 
 # Table of Contents
 - [Overview](#overview)
+- [The Privacy Problem](#the-privacy-problem)
 - [Features](#features)
+- [Enterprise Solutions](#enterprise-solutions)
+- [Partnerships & Referrals](#partnerships--referrals)
 - [System Architecture](#system-architecture)
   - [Core Components](#core-components)
   - [Deployment Architecture](#deployment-architecture)
@@ -67,14 +71,14 @@
 - [Development Guidelines](#development-guidelines)
 - [Contributing](#contributing)
 - [License](#license)
-- [Introducing Subscription](#introducing-subscription)
+- [About Our Team](#about-our-team)
 - [Contributions](#contributions)
 - [Acknowledgments](#acknowledgments)
 - [Star History](#star-history)
 
 # Overview
 
-An AI-powered meeting assistant that captures live meeting audio, transcribes it in real-time, and generates summaries while ensuring user privacy. Perfect for teams who want to focus on discussions while automatically capturing and organizing meeting content.
+A privacy-first AI meeting assistant that captures, transcribes, and summarizes meetings entirely on your infrastructure. Built by expert AI engineers passionate about data sovereignty and open source solutions. Perfect for professionals and enterprises that need advanced meeting intelligence without compromising privacy or control.
 
 ### Why?
 
@@ -84,6 +88,22 @@ While there are many meeting transcription tools available, this solution stands
 - **Flexible**: Works offline, supports multiple meeting platforms
 - **Customizable**: Self-host and modify for your specific needs
 - **Intelligent**: Built-in knowledge graph for semantic search across meetings
+
+---
+## For enterprise version: [Sign up for early access](https://meetily.zackriya.com/#pricing)
+
+## For Partnerships and Custom AI development: [Let's chat](https://www.zackriya.com/service-interest-form/)
+
+## The Privacy Problem
+
+Meeting AI tools create significant privacy and compliance risks across all sectors:
+- **$4.4M average cost per data breach** (IBM 2024)
+- **€5.88 billion in GDPR fines** issued by 2025
+- **400+ unlawful recording cases** filed in California this year
+
+Whether you're a defense consultant, enterprise executive, legal professional, or healthcare provider, your sensitive discussions shouldn't live on servers you don't control. Cloud meeting tools promise convenience but deliver privacy nightmares with unclear data storage practices and potential unauthorized access.
+
+**Meetily solves this**: Complete data sovereignty on your infrastructure, zero vendor lock-in, full control over your sensitive conversations.
 
 # Features
 
@@ -106,7 +126,6 @@ While there are many meeting transcription tools available, this solution stands
 🚧 Speaker diarization
 
 ---
-
 
 # System Architecture
 
@@ -749,6 +768,61 @@ brew uninstall ollama
 ```
 
 
+# About Our Team
+
+We are a team of expert AI engineers building privacy-first AI applications and agents. With experience across 20+ product development projects, we understand the critical importance of protecting privacy while delivering cutting-edge AI solutions.
+
+**Our Mission**: Build comprehensive privacy-first AI applications that enterprises and professionals can trust with their most sensitive data.
+
+**Our Values**:
+- **Privacy First**: Data sovereignty should never be compromised
+- **Open Source**: Transparency and community-driven development
+- **Enterprise Ready**: Solutions that scale and meet compliance requirements
+
+Meetily represents the beginning of our vision - a full ecosystem of privacy-first AI tools ranging from meeting assistants to compliance report generators, auditing systems, case research assistants, patent agents, HR automation, and more.
+
+## Enterprise Solutions
+
+**Meetily Enterprise** is available for on-premise deployment, giving organizations complete control over their meeting intelligence infrastructure. This enterprise version includes:
+
+- **100% On-Premise Deployment**: Your data never leaves your infrastructure
+- **Centralized Management**: Support for 100+ users with administrative controls  
+- **Zero Vendor Lock-in**: Open source MIT license ensures complete ownership
+- **Compliance Ready**: Meet GDPR, SOX, HIPAA, and industry-specific requirements
+- **Custom Integration**: APIs and webhooks for enterprise systems
+
+For enterprise solutions: [https://meetily.zackriya.com](https://meetily.zackriya.com)
+
+## Partnerships & Referrals
+
+**Help us grow the privacy-first AI ecosystem!** 
+
+We're looking for partners and referrals for early adopters of privacy-first AI solutions:
+
+**Target Industries & Use Cases**:
+- Meeting note takers and transcription services
+- Compliance report generators
+- Auditing support systems  
+- Case research assistants
+- Patent agents and IP professionals
+- HR automation and talent management
+- Legal document processing
+- Healthcare documentation
+
+**How You Can Help**:
+- Refer clients who need privacy-first AI solutions
+- Partner with us on custom AI application development
+- Collaborate on revenue sharing opportunities
+- Get early access to new privacy-first AI tools
+
+Your referrals keep us in business and help us build the future of privacy-first AI. We believe in partnerships that benefit everyone.
+
+For partnerships and custom AI development: [https://www.zackriya.com/service-interest-form/](https://www.zackriya.com/service-interest-form/)
+
+---
+
+
+
 ## Development Guidelines
 
 - Follow the established project structure
@@ -767,9 +841,6 @@ brew uninstall ollama
 
 MIT License - Feel free to use this project for your own purposes.
 
-## Introducing Subscription
-
-We are planning to add a subscription option so that you don't have to run the backend on your own server. This will help you scale better and run the service 24/7. This is based on a few requests we received. If you are interested, please fill out the form [here](http://zackriya.com/aimeeting/).
 
 ## Contributions
 
