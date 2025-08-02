@@ -41,6 +41,61 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Function to run docker compose with the correct command
+docker_compose() {
+    if command -v docker-compose >/dev/null 2>&1; then
+        docker-compose "$@"
+    elif docker compose version >/dev/null 2>&1; then
+        docker compose "$@"
+    else
+        log_error "Neither 'docker-compose' nor 'docker compose' command found"
+        return 1
+    fi
+}
+
+# Ensure required directories exist
+ensure_directories() {
+    # Create data directory for database if it doesn't exist
+    if [ ! -d "$SCRIPT_DIR/data" ]; then
+        log_info "Creating data directory for database..."
+        mkdir -p "$SCRIPT_DIR/data"
+        chmod 755 "$SCRIPT_DIR/data"
+        log_info "✓ Data directory created"
+    fi
+    
+    # Create models directory if it doesn't exist
+    if [ ! -d "$SCRIPT_DIR/models" ]; then
+        log_info "Creating models directory..."
+        mkdir -p "$SCRIPT_DIR/models"
+        chmod 755 "$SCRIPT_DIR/models"
+        log_info "✓ Models directory created"
+    fi
+    
+    # Create config directory if it doesn't exist
+    if [ ! -d "$SCRIPT_DIR/config" ]; then
+        mkdir -p "$SCRIPT_DIR/config"
+        chmod 755 "$SCRIPT_DIR/config"
+    fi
+}
+
+# Initialize fresh database file
+init_fresh_database() {
+    local db_path="$SCRIPT_DIR/data/meeting_minutes.db"
+    if [ ! -f "$db_path" ]; then
+        log_info "Initializing fresh database..."
+        # Create an empty database file with proper permissions
+        touch "$db_path"
+        chmod 644 "$db_path"
+        log_info "✓ Fresh database initialized at: $db_path"
+    fi
+}
+
+# Ensure directories exist on script start
+ensure_directories
+
+# Initialize fresh database if it doesn't exist
+init_fresh_database
+
 # Platform detection for macOS support
 DETECTED_OS=$(uname -s)
 IS_MACOS=false
@@ -49,6 +104,9 @@ if [[ "$DETECTED_OS" == "Darwin" ]]; then
     IS_MACOS=true
     COMPOSE_PROFILE_ARGS=("--profile" "macos")
     log_info "macOS detected - will use macOS-optimized Docker services"
+else
+    # Use default profile for Linux/Windows
+    COMPOSE_PROFILE_ARGS=("--profile" "default")
 fi
 
 # Function to load saved preferences
@@ -160,7 +218,7 @@ COMMANDS:
   models        Manage whisper models
   gpu-test      Test GPU availability
   setup-db      Setup/migrate database from existing installation
-  compose       Pass commands directly to docker-compose
+  compose       Pass commands directly to docker_compose
 
 START OPTIONS:
   -m, --model MODEL        Whisper model to use (default: base.en)
@@ -216,7 +274,7 @@ Examples:
   $0 setup-db                         # Interactive database setup
   $0 setup-db --auto                  # Auto-detect existing database
   
-  # Using docker-compose directly
+  # Using docker_compose directly
   $0 compose up -d                    # Start both services in background
   $0 compose logs meeting-app         # View app logs
   $0 compose down                     # Stop all services
@@ -423,7 +481,7 @@ show_log_exit_options() {
                     echo
                     # Set trap and continue with logs
                     trap 'show_log_exit_options "$port" "$app_port"' INT
-                    exec MODEL_NAME="$DEFAULT_MODEL" docker-compose "${COMPOSE_PROFILE_ARGS[@]}" logs -f
+                    exec MODEL_NAME="$DEFAULT_MODEL" docker_compose "${COMPOSE_PROFILE_ARGS[@]}" logs -f
                     ;;
                 2)
                     log_info "Exiting log viewing. Services remain running."
@@ -440,19 +498,19 @@ show_log_exit_options() {
                     ;;
                 3)
                     log_info "Stopping services..."
-                    MODEL_NAME="$DEFAULT_MODEL" docker-compose "${COMPOSE_PROFILE_ARGS[@]}" down
+                    MODEL_NAME="$DEFAULT_MODEL" docker_compose "${COMPOSE_PROFILE_ARGS[@]}" down
                     log_info "✓ Services stopped"
                     exit 0
                     ;;
                 4)
                     log_info "Restarting services..."
-                    MODEL_NAME="$DEFAULT_MODEL" docker-compose "${COMPOSE_PROFILE_ARGS[@]}" restart
+                    MODEL_NAME="$DEFAULT_MODEL" docker_compose "${COMPOSE_PROFILE_ARGS[@]}" restart
                     log_info "✓ Services restarted"
                     log_info "Resuming log viewing... (Press Ctrl+C for options)"
                     echo
                     # Set trap and continue with logs
                     trap 'show_log_exit_options "$port" "$app_port"' INT
-                    exec MODEL_NAME="$DEFAULT_MODEL" docker-compose "${COMPOSE_PROFILE_ARGS[@]}" logs -f
+                    exec MODEL_NAME="$DEFAULT_MODEL" docker_compose "${COMPOSE_PROFILE_ARGS[@]}" logs -f
                     ;;
                 5)
                     echo
@@ -469,13 +527,13 @@ show_log_exit_options() {
             case "$choice" in
                 1)
                     log_info "Restarting services..."
-                    MODEL_NAME="$DEFAULT_MODEL" docker-compose "${COMPOSE_PROFILE_ARGS[@]}" restart
+                    MODEL_NAME="$DEFAULT_MODEL" docker_compose "${COMPOSE_PROFILE_ARGS[@]}" restart
                     log_info "✓ Services restarted"
                     log_info "Starting log viewing... (Press Ctrl+C for options)"
                     echo
                     # Set trap and continue with logs
                     trap 'show_log_exit_options "$port" "$app_port"' INT
-                    exec MODEL_NAME="$DEFAULT_MODEL" docker-compose "${COMPOSE_PROFILE_ARGS[@]}" logs -f
+                    exec MODEL_NAME="$DEFAULT_MODEL" docker_compose "${COMPOSE_PROFILE_ARGS[@]}" logs -f
                     ;;
                 2)
                     log_info "Exiting. Services remain stopped."
@@ -965,7 +1023,7 @@ ensure_model_available() {
     return 0
 }
 
-# Function to start both services using docker-compose
+# Function to start both services using docker_compose
 start_server() {
     local model="$DEFAULT_MODEL"
     local port="$DEFAULT_PORT"
@@ -1198,6 +1256,19 @@ start_server() {
         if [[ "$db_selection" != "fresh" && -n "$db_selection" ]]; then
             db_setup_needed="$db_selection"
         fi
+        
+        # If sqlite3 is not available and we're not in customize mode, ensure db_selection is set to fresh
+        # and update preferences if we loaded previous settings
+        if ! command -v sqlite3 >/dev/null 2>&1 && [[ "$setup_mode" != "customize" ]]; then
+            if [[ "$db_selection" != "fresh" ]]; then
+                log_warn "sqlite3 not found, switching to fresh database installation"
+                db_selection="fresh"
+                # Update preferences with fresh db_selection
+                if [[ "$setup_mode" == "previous" ]]; then
+                    save_preferences "$model" "$port" "$app_port" "$force_mode" "$language" "$translate" "$diarize" "$db_selection"
+                fi
+            fi
+        fi
     fi
     
     # Use environment variables if set
@@ -1224,18 +1295,20 @@ start_server() {
         fi
     elif [[ "${db_selection:-}" == "fresh" && "$run_interactive" == "true" ]]; then
         log_info "Setting up fresh database..."
+        init_fresh_database
         local docker_db_dir="$SCRIPT_DIR/data"
         local docker_db_path="$docker_db_dir/meeting_minutes.db"
         
         # Create data directory
         mkdir -p "$docker_db_dir"
         
-        # Remove existing database if any
-        if [ -f "$docker_db_path" ]; then
-            rm "$docker_db_path"
+        # Ensure database file exists
+        if [ ! -f "$docker_db_path" ]; then
+            touch "$docker_db_path"
+            chmod 644 "$docker_db_path"
         fi
         
-        log_info "✓ Fresh database setup complete"
+        log_info "✓ Fresh database setup complete at: $docker_db_path"
     fi
     
     # Check model availability and show download info
@@ -1278,7 +1351,7 @@ start_server() {
         whisper_model_path="models/ggml-${model}.bin"
     fi
     
-    # Build environment variables for docker-compose
+    # Build environment variables for docker_compose
     compose_env+=("DOCKERFILE=$dockerfile")
     compose_env+=("WHISPER_MODEL=$whisper_model_path")
     compose_env+=("WHISPER_PORT=$port")
@@ -1323,7 +1396,7 @@ start_server() {
         fi
     fi
     
-    # Prepare docker-compose command
+    # Prepare docker_compose command
     local compose_cmd=()
     
     # Add environment variables
@@ -1331,8 +1404,7 @@ start_server() {
         compose_cmd+=("$env_var")
     done
     
-    # Add docker-compose command
-    compose_cmd+=("docker-compose")
+    # Docker compose will be called with env command
     
     # Add env-file if specified
     if [ -n "$env_file" ]; then
@@ -1368,10 +1440,15 @@ start_server() {
         return 0
     fi
     
-    # Execute docker-compose
+    # Execute docker_compose
     if [ "$detach" = "true" ]; then
         log_info "Starting services in background..."
-        if env "${compose_env[@]}" docker-compose "${COMPOSE_PROFILE_ARGS[@]}" up -d ${env_file:+--env-file "$env_file"}; then
+        # Export environment variables and run docker_compose
+        (
+            export "${compose_env[@]}"
+            docker_compose "${COMPOSE_PROFILE_ARGS[@]}" up -d ${env_file:+--env-file "$env_file"}
+        )
+        if [ $? -eq 0 ]; then
             log_info "✓ Services started in background"
             echo
             log_info "📊 Service URLs:"
@@ -1476,15 +1553,20 @@ start_server() {
         echo
         
         # Start services in detached mode first
-        if env "${compose_env[@]}" docker-compose "${COMPOSE_PROFILE_ARGS[@]}" up -d ${env_file:+--env-file "$env_file"}; then
+        # Export environment variables and run docker_compose
+        (
+            export "${compose_env[@]}"
+            docker_compose "${COMPOSE_PROFILE_ARGS[@]}" up -d ${env_file:+--env-file "$env_file"}
+        )
+        if [ $? -eq 0 ]; then
             log_info "✓ Services started in background"
             
             # Now follow logs with trap handling
             # Set up trap for Ctrl+C to show options
             trap 'show_log_exit_options "$port" "$app_port"' INT
             
-            # Follow logs - this way docker-compose doesn't handle the interrupt
-            MODEL_NAME="$DEFAULT_MODEL" docker-compose "${COMPOSE_PROFILE_ARGS[@]}" logs -f
+            # Follow logs - this way docker_compose doesn't handle the interrupt
+            MODEL_NAME="$DEFAULT_MODEL" docker_compose "${COMPOSE_PROFILE_ARGS[@]}" logs -f
             local exit_code=$?
             
             # Reset trap to default
@@ -1506,11 +1588,11 @@ start_server() {
 stop_server() {
     log_info "Stopping services..."
     if [ "$DRY_RUN" = "true" ]; then
-        log_info "DRY RUN - Would run: docker-compose down"
+        log_info "DRY RUN - Would run: docker_compose down"
         return 0
     fi
     
-    if MODEL_NAME="$DEFAULT_MODEL" docker-compose "${COMPOSE_PROFILE_ARGS[@]}" down; then
+    if MODEL_NAME="$DEFAULT_MODEL" docker_compose "${COMPOSE_PROFILE_ARGS[@]}" down; then
         log_info "✓ Services stopped"
     else
         log_error "✗ Failed to stop services"
@@ -1548,7 +1630,7 @@ show_logs() {
         esac
     done
     
-    local log_cmd=("docker-compose" "${COMPOSE_PROFILE_ARGS[@]}" "logs" "--tail=$lines")
+    local log_cmd=("docker_compose" "${COMPOSE_PROFILE_ARGS[@]}" "logs" "--tail=$lines")
     
     if [ "$follow" = "true" ]; then
         log_cmd+=("-f")
@@ -1584,12 +1666,12 @@ show_status() {
     log_info "=== Services Status ==="
     
     if [ "$DRY_RUN" = "true" ]; then
-        log_info "DRY RUN - Would run: docker-compose ps"
+        log_info "DRY RUN - Would run: docker_compose ps"
         return 0
     fi
     
-    # Show docker-compose status
-    MODEL_NAME="$DEFAULT_MODEL" docker-compose "${COMPOSE_PROFILE_ARGS[@]}" ps
+    # Show docker_compose status
+    MODEL_NAME="$DEFAULT_MODEL" docker_compose "${COMPOSE_PROFILE_ARGS[@]}" ps
     
     # Check individual service health
     local whisper_running=false
@@ -1691,9 +1773,9 @@ clean_up() {
     
     if [ "$DRY_RUN" = "true" ]; then
         log_info "DRY RUN - Would run:"
-        log_info "  docker-compose down"
+        log_info "  docker_compose down"
         if [ "$remove_images" = "true" ]; then
-            log_info "  docker-compose down --rmi all"
+            log_info "  docker_compose down --rmi all"
         fi
         return 0
     fi
@@ -1701,9 +1783,9 @@ clean_up() {
     # Stop and remove containers
     log_info "Stopping and removing containers..."
     if [ "$remove_images" = "true" ]; then
-        MODEL_NAME="$DEFAULT_MODEL" docker-compose "${COMPOSE_PROFILE_ARGS[@]}" down --rmi all --volumes --remove-orphans
+        MODEL_NAME="$DEFAULT_MODEL" docker_compose "${COMPOSE_PROFILE_ARGS[@]}" down --rmi all --volumes --remove-orphans
     else
-        MODEL_NAME="$DEFAULT_MODEL" docker-compose "${COMPOSE_PROFILE_ARGS[@]}" down --volumes --remove-orphans
+        MODEL_NAME="$DEFAULT_MODEL" docker_compose "${COMPOSE_PROFILE_ARGS[@]}" down --volumes --remove-orphans
     fi
     
     log_info "✓ Cleanup complete"
@@ -1891,7 +1973,7 @@ main() {
             ;;
         "compose")
             shift
-            MODEL_NAME="$DEFAULT_MODEL" docker-compose "${COMPOSE_PROFILE_ARGS[@]}" "$@"
+            MODEL_NAME="$DEFAULT_MODEL" docker_compose "${COMPOSE_PROFILE_ARGS[@]}" "$@"
             ;;
         "help"|"--help"|"-h")
             show_help

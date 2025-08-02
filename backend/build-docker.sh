@@ -41,6 +41,34 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Ensure required directories exist
+ensure_directories() {
+    # Create data directory for database if it doesn't exist
+    if [ ! -d "$SCRIPT_DIR/data" ]; then
+        log_info "Creating data directory for database..."
+        mkdir -p "$SCRIPT_DIR/data"
+        chmod 755 "$SCRIPT_DIR/data"
+        log_info "✓ Data directory created"
+    fi
+    
+    # Create models directory if it doesn't exist
+    if [ ! -d "$SCRIPT_DIR/models" ]; then
+        log_info "Creating models directory..."
+        mkdir -p "$SCRIPT_DIR/models"
+        chmod 755 "$SCRIPT_DIR/models"
+        log_info "✓ Models directory created"
+    fi
+    
+    # Create config directory if it doesn't exist
+    if [ ! -d "$SCRIPT_DIR/config" ]; then
+        mkdir -p "$SCRIPT_DIR/config"
+        chmod 755 "$SCRIPT_DIR/config"
+    fi
+}
+
+# Ensure directories exist on script start
+ensure_directories
+
 # Platform detection for macOS support
 DETECTED_OS=$(uname -s)
 IS_MACOS=false
@@ -155,6 +183,10 @@ log_info "Checking for custom server directory..."
 if [ ! -d "../whisper-custom/server" ]; then
     handle_error "Directory '../whisper-custom/server' not found. Please make sure the custom server files exist"
 fi
+
+log_info "Updating git submodules..."
+git submodule update --init --recursive || handle_error "Failed to update git submodules"
+
 
 log_info "Copying custom server files..."
 cp -r ../whisper-custom/server/* "examples/server/" || handle_error "Failed to copy custom server files"

@@ -35,7 +35,17 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
 
 # Create non-root user for security
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
 
-# Run the application
+# Install gosu for safe user switching
+RUN apt-get update && apt-get install -y gosu && rm -rf /var/lib/apt/lists/*
+
+# Create entrypoint script to fix permissions at runtime
+RUN echo '#!/bin/bash\n\
+# Fix permissions for mounted data directory\n\
+chown -R appuser:appuser /app/data 2>/dev/null || true\n\
+# Switch to appuser and run the application\n\
+exec gosu appuser "$@"' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+# Run the application via entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5167"]

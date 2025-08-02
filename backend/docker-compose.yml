@@ -41,10 +41,12 @@ services:
     
     # Volume mounts
     volumes:
-      # Model storage - use local directory for better sync
-      - ${LOCAL_MODELS_DIR:-./models}:/app/models
+      # Model storage - persistent across container restarts
+      - whisper_models:/app/models
       # Upload directory for temporary files
       - whisper_uploads:/app/uploads
+      # Optional: mount local models directory
+      - ${LOCAL_MODELS_DIR:-./models}:/app/local_models:ro
       # Optional: mount custom configuration
       - ${CONFIG_DIR:-./config}:/app/config:ro
     
@@ -92,13 +94,13 @@ services:
       - macos
     
     # GPU support (uncomment for GPU version)
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     
     # Health check
     healthcheck:
@@ -124,7 +126,7 @@ services:
     image: alpine/curl:latest
     container_name: whisper-model-downloader
     volumes:
-      - ${LOCAL_MODELS_DIR:-./models}:/models
+      - whisper_models:/models
     environment:
       - MODEL_NAME=${MODEL_NAME:-base.en}
     command: |

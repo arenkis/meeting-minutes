@@ -30,6 +30,16 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Ensure data directory exists
+ensure_data_directory() {
+    if [ ! -d "$DOCKER_DB_DIR" ]; then
+        log_info "Creating data directory..."
+        mkdir -p "$DOCKER_DB_DIR"
+        chmod 755 "$DOCKER_DB_DIR"
+        log_info "✓ Data directory created at: $DOCKER_DB_DIR"
+    fi
+}
+
 show_help() {
     cat << EOF
 Meeting App Database Setup Script
@@ -259,8 +269,12 @@ setup_fresh_database() {
         rm "$DOCKER_DB_PATH"
     fi
     
-    log_info "✓ Fresh database setup complete"
-    log_info "The application will create a new database on first run"
+    # Create empty database file with proper permissions
+    touch "$DOCKER_DB_PATH"
+    chmod 644 "$DOCKER_DB_PATH"
+    
+    log_info "✓ Fresh database created at: $DOCKER_DB_PATH"
+    log_info "The application will initialize the database schema on first run"
 }
 
 # Auto setup function
@@ -286,6 +300,9 @@ auto_setup() {
 
 # Main function
 main() {
+    # Ensure data directory exists first
+    ensure_data_directory
+    
     local custom_db_path=""
     local fresh_install=false
     local auto_mode=false
@@ -317,16 +334,19 @@ main() {
         esac
     done
     
-    # Check if sqlite3 is available
-    if ! command -v sqlite3 >/dev/null 2>&1; then
-        log_error "sqlite3 is required but not installed"
-        log_error "Please install sqlite3 and try again"
-        exit 1
-    fi
-    
+    # For fresh install, sqlite3 is not required
     if [ "$fresh_install" = true ]; then
         setup_fresh_database
-    elif [ -n "$custom_db_path" ]; then
+    else
+        # Check if sqlite3 is available for database operations
+        if ! command -v sqlite3 >/dev/null 2>&1; then
+            log_error "sqlite3 is required for database operations but not installed"
+            log_error "Please install sqlite3 or use --fresh for a fresh installation"
+            exit 1
+        fi
+    fi
+    
+    if [ -n "$custom_db_path" ]; then
         if check_database "$custom_db_path"; then
             get_database_info "$custom_db_path"
             copy_database "$custom_db_path" "$DOCKER_DB_PATH"
