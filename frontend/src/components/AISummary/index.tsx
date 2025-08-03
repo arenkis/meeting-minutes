@@ -28,10 +28,16 @@ export const AISummary = ({ summary, status, error, onSummaryChange, onRegenerat
     const updatedSummary = { ...summary };
     
     Object.entries(updatedSummary).forEach(([sectionKey, section]) => {
-      section.blocks = section.blocks.map(block => ({
-        ...block,
-        id: block.id.includes(sectionKey) ? block.id : generateUniqueId(sectionKey)
-      }));
+      // Ensure section has blocks array before mapping
+      if (section && Array.isArray(section.blocks)) {
+        section.blocks = section.blocks.map(block => ({
+          ...block,
+          id: block.id.includes(sectionKey) ? block.id : generateUniqueId(sectionKey)
+        }));
+      } else {
+        // Initialize empty blocks array if missing or invalid
+        section.blocks = [];
+      }
     });
     
     return updatedSummary;

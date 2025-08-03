@@ -230,15 +230,17 @@ export default function PageContent({ meeting, summaryData }: { meeting: any, su
             
             // Format the summary data with consistent styling
             const formattedSummary = Object.entries(summaryData).reduce((acc: Summary, [key, section]: [string, any]) => {
-              acc[key] = {
-                title: section.title,
-                blocks: section.blocks.map((block: any) => ({
-                  ...block,
-                  // type: 'bullet',
-                  color: 'default',
-                  content: block.content.trim() // Remove trailing newlines
-                }))
-              };
+              if (section && section.title) {
+                acc[key] = {
+                  title: section.title,
+                  blocks: (section.blocks || []).map((block: any) => ({
+                    ...block,
+                    // type: 'bullet',
+                    color: 'default',
+                    content: block?.content?.trim() || '' // Remove trailing newlines and handle null content
+                  }))
+                };
+              }
               return acc;
             }, {} as Summary);
 
@@ -439,15 +441,17 @@ export default function PageContent({ meeting, summaryData }: { meeting: any, su
 
             // Format the summary data with consistent styling
             const formattedSummary = Object.entries(summaryData).reduce((acc: Summary, [key, section]: [string, any]) => {
-              acc[key] = {
-                title: section.title,
-                blocks: section.blocks.map((block: any) => ({
-                  ...block,
-                  // type: 'bullet',
-                  color: 'default',
-                  content: block.content.trim()
-                }))
-              };
+              if (section && section.title) {
+                acc[key] = {
+                  title: section.title,
+                  blocks: (section.blocks || []).map((block: any) => ({
+                    ...block,
+                    // type: 'bullet',
+                    color: 'default',
+                    content: block?.content?.trim() || '' // Handle null content
+                  }))
+                };
+              }
               return acc;
             }, {} as Summary);
 

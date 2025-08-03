@@ -66,19 +66,52 @@ export default function MeetingDetails() {
           meetingId: currentMeeting.id,
         }) as any;
         const summaryData = summary.data || {};
-        const { MeetingName, ...restSummaryData } = summaryData;
-        const formattedSummary = Object.entries(restSummaryData).reduce((acc: Summary, [key, section]: [string, any]) => {
-          acc[key] = {
-            title: section?.title || key,
-            blocks: (section?.blocks || []).map((block: any) => ({
-              ...block,
-              // type: 'bullet',
-              color: 'default',
-              content: block.content.trim()
-            }))
-          };
-          return acc;
-        }, {} as Summary);
+        const { MeetingName, _section_order, ...restSummaryData } = summaryData;
+        
+        // Format the summary data with consistent styling - PRESERVE ORDER
+        const formattedSummary: Summary = {};
+        
+        // Use section order if available to maintain exact order and handle duplicates
+        const sectionKeys = _section_order || Object.keys(restSummaryData);
+        
+        for (const key of sectionKeys) {
+          try {
+            const section = restSummaryData[key];
+            // Comprehensive null checks to prevent the error
+            if (section && 
+                typeof section === 'object' && 
+                'title' in section && 
+                'blocks' in section) {
+              
+              const typedSection = section as { title?: string; blocks?: any[] };
+              
+              // Ensure blocks is an array before mapping
+              if (Array.isArray(typedSection.blocks)) {
+                formattedSummary[key] = {
+                  title: typedSection.title || key,
+                  blocks: typedSection.blocks.map((block: any) => ({
+                    ...block,
+                    // type: 'bullet',
+                    color: 'default',
+                    content: block?.content?.trim() || ''
+                  }))
+                };
+              } else {
+                // Handle case where blocks is not an array
+                console.warn(`Section ${key} has invalid blocks:`, typedSection.blocks);
+                formattedSummary[key] = {
+                  title: typedSection.title || key,
+                  blocks: []
+                };
+              }
+            } else {
+              console.warn(`Skipping invalid section ${key}:`, section);
+            }
+          } catch (error) {
+            console.warn(`Error processing section ${key}:`, error);
+            // Continue processing other sections
+          }
+        }
         setMeetingSummary(formattedSummary);
       } catch (error) {
         console.error('Error fetching meeting summary:', error);
