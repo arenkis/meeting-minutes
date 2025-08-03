@@ -28,6 +28,7 @@ use tokio::sync::mpsc;
 static RECORDING_FLAG: AtomicBool = AtomicBool::new(false);
 static SEQUENCE_COUNTER: AtomicU64 = AtomicU64::new(0);
 static CHUNK_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
+static DROPPED_CHUNK_COUNTER: AtomicU64 = AtomicU64::new(0);
 static mut MIC_BUFFER: Option<Arc<Mutex<Vec<f32>>>> = None;
 static mut SYSTEM_BUFFER: Option<Arc<Mutex<Vec<f32>>>> = None;
 static mut AUDIO_CHUNK_QUEUE: Option<Arc<Mutex<VecDeque<AudioChunk>>>> = None;
@@ -248,12 +249,13 @@ impl TranscriptAccumulator {
     }
 }
 
-async fn audio_collection_task(
+async fn audio_collection_task<R: Runtime>(
     mic_stream: Arc<AudioStream>,
     system_stream: Arc<AudioStream>,
     is_running: Arc<AtomicBool>,
     sample_rate: u32,
     recording_start_time: std::time::Instant,
+    app_handle: AppHandle<R>,
 ) -> Result<(), String> {
     log_info!("Audio collection task started");
     
@@ -329,7 +331,19 @@ async fn audio_collection_task(
                         // Remove oldest chunks if queue is full
                         while queue_guard.len() >= MAX_AUDIO_QUEUE_SIZE {
                             if let Some(dropped_chunk) = queue_guard.pop_front() {
-                                log_info!("Dropped old audio chunk {} due to queue overflow", dropped_chunk.chunk_id);
+                                let drop_count = DROPPED_CHUNK_COUNTER.fetch_add(1, Ordering::SeqCst) + 1;
+                                log_info!("Dropped old audio chunk {} due to queue overflow (total drops: {})", dropped_chunk.chunk_id, drop_count);
+                                
+                                // // Emit warning event every 10th drop
+                                // if drop_count % 10 == 0 {
+                                if drop_count == 1 {
+                                    let warning_message = format!("Transcription process is very slow. Audio chunk {} was dropped. Please choose a smaller model, or run whisper natively.", dropped_chunk.chunk_id);
+                                    log_info!("Emitting chunk-drop-warning event: {}", warning_message);
+                                    
+                                    if let Err(e) = app_handle.emit("chunk-drop-warning", &warning_message) {
+                                        log_error!("Failed to emit chunk-drop-warning event: {}", e);
+                                    }
+                                }
                             }
                         }
                         queue_guard.push_back(audio_chunk);
@@ -670,6 +684,10 @@ async fn start_recording<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
         return Err("Recording already in progress".to_string());
     }
 
+    // Reset dropped chunk counter for new recording session
+    DROPPED_CHUNK_COUNTER.store(0, Ordering::SeqCst);
+    log_info!("Reset dropped chunk counter for new recording session");
+
     // Stop any existing tasks first
     unsafe {
         if let Some(task) = AUDIO_COLLECTION_TASK.take() {
@@ -776,6 +794,7 @@ async fn start_recording<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
         let mic_stream_clone = mic_stream.clone();
         let system_stream_clone = system_stream.clone();
         let is_running_clone = is_running.clone();
+        let app_handle_clone = app.clone();
         tokio::spawn(async move {
             if let Err(e) = audio_collection_task(
                 mic_stream_clone,
@@ -783,6 +802,7 @@ async fn start_recording<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
                 is_running_clone,
                 sample_rate,
                 recording_start_time,
+                app_handle_clone,
             ).await {
                 log_error!("Audio collection task error: {}", e);
             }

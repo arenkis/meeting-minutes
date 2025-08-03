@@ -234,7 +234,7 @@ export default function PageContent({ meeting, summaryData }: { meeting: any, su
                 title: section.title,
                 blocks: section.blocks.map((block: any) => ({
                   ...block,
-                  type: 'bullet',
+                  // type: 'bullet',
                   color: 'default',
                   content: block.content.trim() // Remove trailing newlines
                 }))
@@ -443,7 +443,7 @@ export default function PageContent({ meeting, summaryData }: { meeting: any, su
                 title: section.title,
                 blocks: section.blocks.map((block: any) => ({
                   ...block,
-                  type: 'bullet',
+                  // type: 'bullet',
                   color: 'default',
                   content: block.content.trim()
                 }))

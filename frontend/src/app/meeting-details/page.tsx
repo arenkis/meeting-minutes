@@ -72,7 +72,7 @@ export default function MeetingDetails() {
             title: section?.title || key,
             blocks: (section?.blocks || []).map((block: any) => ({
               ...block,
-              type: 'bullet',
+              // type: 'bullet',
               color: 'default',
               content: block.content.trim()
             }))

@@ -64,6 +64,8 @@ export default function Home() {
   const [showModelSettings, setShowModelSettings] = useState(false);
   const [showErrorAlert, setShowErrorAlert] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showChunkDropWarning, setShowChunkDropWarning] = useState(false);
+  const [chunkDropMessage, setChunkDropMessage] = useState('');
   const [isSavingTranscript, setIsSavingTranscript] = useState(false);
   const [isRecordingDisabled, setIsRecordingDisabled] = useState(false);
 
@@ -355,6 +357,39 @@ export default function Home() {
       if (unlistenFn) {
         unlistenFn();
         console.log('🧹 CLEANUP: MAIN transcript listener cleaned up');
+      }
+    };
+  }, []);
+
+  // Set up chunk drop warning listener
+  useEffect(() => {
+    let unlistenFn: (() => void) | undefined;
+
+    const setupChunkDropListener = async () => {
+      try {
+        console.log('Setting up chunk-drop-warning listener...');
+        unlistenFn = await listen<string>('chunk-drop-warning', (event) => {
+          console.log('Chunk drop warning received:', event.payload);
+          setChunkDropMessage(event.payload);
+          setShowChunkDropWarning(true);
+          
+          // // Auto-dismiss after 8 seconds
+          // setTimeout(() => {
+          //   setShowChunkDropWarning(false);
+          // }, 8000);
+        });
+        console.log('Chunk drop warning listener setup complete');
+      } catch (error) {
+        console.error('Failed to setup chunk drop warning listener:', error);
+      }
+    };
+
+    setupChunkDropListener();
+
+    return () => {
+      console.log('Cleaning up chunk drop warning listener...');
+      if (unlistenFn) {
+        unlistenFn();
       }
     };
   }, []);
@@ -797,7 +832,7 @@ export default function Home() {
                 title: section.title,
                 blocks: section.blocks.map((block: any) => ({
                   ...block,
-                  type: 'bullet',
+                  // type: 'bullet',
                   color: 'default',
                   content: block.content.trim() // Remove trailing newlines
                 }))
@@ -976,7 +1011,7 @@ export default function Home() {
                 title: section.title,
                 blocks: section.blocks.map((block: any) => ({
                   ...block,
-                  type: 'bullet',
+                  // type: 'bullet',
                   color: 'default',
                   content: block.content.trim()
                 }))
@@ -1061,6 +1096,22 @@ export default function Home() {
           </Alert>
         </div>
       )}
+      {showChunkDropWarning && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Alert className="max-w-lg mx-4 border-yellow-200 bg-white shadow-xl">
+            <AlertTitle className="text-yellow-800">Transcription Performance Warning</AlertTitle>
+            <AlertDescription className="text-yellow-700">
+              {chunkDropMessage}
+              <button
+                onClick={() => setShowChunkDropWarning(false)}
+                className="ml-2 text-yellow-600 hover:text-yellow-800 underline"
+              >
+                Dismiss
+              </button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
       <div className="flex flex-1 overflow-hidden">
         {/* Left side - Transcript */}
         <div className="w-1/3 min-w-[300px] border-r border-gray-200 bg-white flex flex-col relative">
@@ -1085,7 +1136,7 @@ export default function Home() {
                     </svg>
                     <span className="text-sm">Copy Transcript</span>
                   </button>
-                  {showSummary && !isRecording && (
+                  {/* {showSummary && !isRecording && (
                     <>
                       <button
                         onClick={handleGenerateSummary}
@@ -1133,10 +1184,10 @@ export default function Home() {
                         </svg>
                       </button>
                     </>
-                  )}
+                  )} */}
                 </div>
 
-                {showSummary && !isRecording && (
+                {/* {showSummary && !isRecording && (
                   <>
                     <button
                       onClick={handleGenerateSummary}
@@ -1184,7 +1235,7 @@ export default function Home() {
                       </svg>
                     </button>
                   </>
-                )}
+                )} */}
               </div>
             </div>
           </div>
@@ -1195,7 +1246,7 @@ export default function Home() {
           </div>
           
           {/* Custom prompt input at bottom of transcript section */}
-          {!isRecording && transcripts.length > 0 && !isMeetingActive && (
+          {/* {!isRecording && transcripts.length > 0 && !isMeetingActive && (
             <div className="p-4 border-t border-gray-200">
               <textarea
                 placeholder="Add context for AI summary. For example people involved, meeting overview, objective etc..."
@@ -1205,7 +1256,7 @@ export default function Home() {
                 disabled={summaryStatus === 'processing'}
               />
             </div>
-          )}
+          )} */}
 
           {/* Recording controls */}
           <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 z-10">
