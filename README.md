@@ -240,7 +240,7 @@ Provide necessary permissions for audio capture and microphone access.
 </p>
 
 
-**Option 1: Manual Setup**
+**Option 1: Manual Setup (Recommended)**
 1. Clone the repository:
 ```bash
 git clone https://github.com/Zackriya-Solutions/meeting-minutes
@@ -257,33 +257,35 @@ cd meeting-minutes/backend
 .\start_with_output.ps1
 ```
 
-**Option 2: Docker Setup (Recommended - Easiest)**
+**Option 2: Docker Setup (Alternative)**
 
-Docker provides the easiest setup with automatic dependency management, GPU detection, and cross-platform compatibility.
+⚠️ **Performance Warning**: Docker setup has known limitations:
+- **Whisper transcription is significantly slower** (2-3x slower than native)
+- **Backend response times are increased** due to containerization overhead
+- **Audio processing may drop chunks** under resource constraints
+
+**For best performance, use Option 1 (Manual Setup). Only use Docker if:**
+- You need easy deployment across multiple environments
+- You're comfortable with reduced performance
+- You have sufficient system resources (8GB+ RAM, 4+ CPU cores)
 
 **Prerequisites:**
-- Docker Desktop (Windows/Mac) or Docker Engine (Linux)
+- Docker Desktop for Windows
 - 8GB+ RAM allocated to Docker
+- 4+ CPU cores recommended
 - For GPU: NVIDIA drivers + nvidia-container-toolkit
 
 **Quick Start:**
-
 ```bash
 # Clone the repository
 git clone https://github.com/Zackriya-Solutions/meeting-minutes.git
 cd meeting-minutes/backend
 
-# Windows (PowerShell)
+# Build and start (Windows PowerShell)
 .\build-docker.ps1 cpu                     # Build CPU version
 .\run-docker.ps1 start -Interactive        # Interactive setup (recommended)
 # OR
 .\run-docker.ps1 start -Detach            # Quick start with defaults
-
-# macOS/Linux (Bash)
-./build-docker.sh cpu                      # Build CPU version
-./run-docker.sh start --interactive        # Interactive setup (recommended)
-# OR
-./run-docker.sh start --detach            # Quick start with defaults
 ```
 
 **After startup, access:**
@@ -291,42 +293,24 @@ cd meeting-minutes/backend
 - **Meeting App**: http://localhost:5167 (with API docs at `/docs`)
 
 **Basic Commands:**
-
 ```bash
-# Windows PowerShell
+# Management
 .\run-docker.ps1 stop                     # Stop services
 .\run-docker.ps1 status                   # Check service health
 .\run-docker.ps1 logs -Follow             # View logs
 
-# macOS/Linux Bash
-./run-docker.sh stop                       # Stop services
-./run-docker.sh status                     # Check service health
-./run-docker.sh logs --follow              # View logs
+# Advanced options
+.\run-docker.ps1 start -Model large-v3 -Gpu -Language es -Detach
 ```
 
-**Advanced Options:**
-- **GPU Support**: Use `.\build-docker.ps1 gpu` or `./build-docker.sh gpu`
-- **Custom Model**: Add `-Model large-v3` or `--model large-v3`
-- **Language**: Add `-Language es` or `--language es`
-- **Different Ports**: Add `-Port 8081 -AppPort 5168` or `--port 8081 --app-port 5168`
+**Available Options:**
+- **GPU Support**: Use `.\build-docker.ps1 gpu`
+- **Custom Model**: Add `-Model large-v3` (tiny, base, small, medium, large-v3)
+- **Language**: Add `-Language es` (auto, en, es, fr, de, etc.)
+- **Different Ports**: Add `-Port 8081 -AppPort 5168`
+- **Features**: Add `-Translate` or `-Diarize`
 
-For comprehensive Docker documentation including model selection guide, GPU configuration, and troubleshooting, see [backend/README.md](backend/README.md#-docker-deployment-recommended).
-
-**⚠️ Important Notes:**
-
-### Audio Processing Requirements
-When running in Docker containers, audio processing can drop chunks due to resource limitations:
-
-**Symptoms:**
-- Log messages: "Dropped old audio chunk X due to queue overflow"
-- Missing or incomplete transcriptions
-- Processing delays
-
-**Prevention:**
-- Allocate **8GB+ RAM** to Docker containers
-- Ensure adequate CPU allocation (4+ cores recommended)
-- Use appropriate Whisper model size for your hardware
-- Monitor container resource usage with `docker stats`
+For comprehensive Docker documentation, see [backend/README.md](backend/README.md#-docker-deployment-recommended).
 
 ## For macOS:
 
@@ -418,6 +402,59 @@ chmod +x build_whisper.sh
 ./clean_start_backend.sh
 ```
 
+**Option 3: Docker Setup (Alternative)**
+
+⚠️ **Performance Warning**: Docker setup has known limitations:
+- **Whisper transcription is significantly slower** (2-3x slower than native)
+- **Backend response times are increased** due to containerization overhead
+- **Audio processing may drop chunks** under resource constraints
+
+**For best performance, use Option 1 (Homebrew) or Option 2 (Manual). Only use Docker if:**
+- You need easy deployment across multiple environments
+- You're comfortable with reduced performance
+- You have sufficient system resources (8GB+ RAM, 4+ CPU cores)
+
+**Prerequisites:**
+- Docker Desktop for Mac
+- 8GB+ RAM allocated to Docker
+- 4+ CPU cores recommended
+
+**Quick Start:**
+```bash
+# Clone the repository
+git clone https://github.com/Zackriya-Solutions/meeting-minutes.git
+cd meeting-minutes/backend
+
+# Build and start (macOS/Linux)
+./build-docker.sh cpu                      # Build CPU version
+./run-docker.sh start --interactive        # Interactive setup (recommended)
+# OR
+./run-docker.sh start --detach            # Quick start with defaults
+```
+
+**After startup, access:**
+- **Whisper Server**: http://localhost:8178
+- **Meeting App**: http://localhost:5167 (with API docs at `/docs`)
+
+**Basic Commands:**
+```bash
+# Management
+./run-docker.sh stop                       # Stop services
+./run-docker.sh status                     # Check service health
+./run-docker.sh logs --follow              # View logs
+
+# Advanced options
+./run-docker.sh start --model large-v3 --language es --detach
+```
+
+**Available Options:**
+- **GPU Support**: Use `./build-docker.sh gpu` (NVIDIA only)
+- **Custom Model**: Add `--model large-v3` (tiny, base, small, medium, large-v3)
+- **Language**: Add `--language es` (auto, en, es, fr, de, etc.)
+- **Different Ports**: Add `--port 8081 --app-port 5168`
+- **Features**: Add `--translate` or `--diarize`
+
+For comprehensive Docker documentation, see [backend/README.md](backend/README.md#-docker-deployment-recommended).
 
 ### Development Setup
 
@@ -608,6 +645,8 @@ xattr -cr /Applications/meetily-frontend.app
 ```
 
 ## Docker Script Reference
+
+⚠️ **Performance Note**: While Docker provides easy setup, it has performance limitations compared to native installation. See platform-specific sections above for performance considerations.
 
 ### build-docker.ps1 / build-docker.sh
 Build Docker images with GPU support and cross-platform compatibility.
