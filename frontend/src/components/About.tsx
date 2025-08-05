@@ -1,6 +1,9 @@
 import React from "react";
 import { invoke } from '@tauri-apps/api/core';
 import Image from 'next/image';
+import { ScrollArea } from "@/components/ui/scroll-area";
+import AnalyticsConsentSwitch from "./AnalyticsConsentSwitch";
+
 
 export function About() {
     const handleContactClick = async () => {
@@ -12,7 +15,7 @@ export function About() {
     };
 
     return (
-        <div className="p-4 space-y-4 h-full overflow-y-auto">
+        <ScrollArea className="p-4 space-y-4 h-[80vh]">
             {/* Compact Header */}
             <div className="text-center">
                 <div className="mb-3">
@@ -81,6 +84,7 @@ export function About() {
                     Built by Zackriya Solutions
                 </p>
             </div>
-        </div>
+            <AnalyticsConsentSwitch />
+        </ScrollArea>
     )
 }

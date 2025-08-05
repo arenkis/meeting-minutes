@@ -1186,6 +1186,15 @@ async fn init_analytics() -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn disable_analytics() -> Result<(), String> {
+    unsafe {
+        ANALYTICS_CLIENT = None;
+    }
+    Ok(())
+}
+
+
+#[tauri::command]
 async fn track_event(event_name: String, properties: Option<std::collections::HashMap<String, String>>) -> Result<(), String> {
     unsafe {
         if let Some(client) = &ANALYTICS_CLIENT {
@@ -1443,6 +1452,7 @@ pub fn run() {
             read_audio_file,
             save_transcript,
             init_analytics,
+            disable_analytics,
             track_event,
             identify_user,
             track_meeting_started,
