@@ -101,7 +101,7 @@ START OPTIONS:
   -Cpu, -c               Force CPU mode for whisper
   -Language LANG         Language code (default: auto)
   -Translate             Enable translation to English
-  -Diarize               Enable speaker diarization
+  # -Diarize               Enable speaker diarization (feature not available yet)
   -Detach, -d            Run in background
   -Interactive, -i       Interactive setup with prompts
   -EnvFile FILE          Load environment from file
@@ -321,7 +321,7 @@ function Load-Preferences {
                 $Global:SAVED_FORCE_MODE = if ($preferences.PSObject.Properties['ForceMode']) { $preferences.ForceMode } else { $null }
                 $Global:SAVED_LANGUAGE = if ($preferences.PSObject.Properties['Language']) { $preferences.Language } else { $null }
                 $Global:SAVED_TRANSLATE = if ($preferences.PSObject.Properties['Translate']) { $preferences.Translate } else { $null }
-                $Global:SAVED_DIARIZE = if ($preferences.PSObject.Properties['Diarize']) { $preferences.Diarize } else { $null }
+                # $Global:SAVED_DIARIZE = if ($preferences.PSObject.Properties['Diarize']) { $preferences.Diarize } else { $null }
                 $Global:SAVED_DB_SELECTION = if ($preferences.PSObject.Properties['DbSelection']) { $preferences.DbSelection } else { $null }
                 Write-Info "Loaded previous preferences from $($preferences.Timestamp)"
             }
@@ -343,7 +343,7 @@ function Invoke-StartCommand {
     $envFile = ""
     $language = ""
     $translate = $false
-    $diarize = $false
+    # $diarize = $false  # Feature not available yet
     
     # Parse remaining arguments
     for ($i = 0; $i -lt $RemainingArgs.Length; $i++) {
@@ -381,9 +381,9 @@ function Invoke-StartCommand {
             "-Translate" {
                 $translate = $true
             }
-            "-Diarize" {
-                $diarize = $true
-            }
+            # "-Diarize" {  # Feature not available yet
+            #     $diarize = $true
+            # }
             { $_ -in @("-Detach", "-d") } {
                 $detach = $true
             }
@@ -491,7 +491,7 @@ function Invoke-StartCommand {
                 $forceMode = if ($Global:SAVED_FORCE_MODE) { $Global:SAVED_FORCE_MODE } else { $forceMode }
                 $language = if ($Global:SAVED_LANGUAGE) { $Global:SAVED_LANGUAGE } else { $language }
                 $translate = if ($Global:SAVED_TRANSLATE -eq $true) { $true } else { $false }
-                $diarize = if ($Global:SAVED_DIARIZE -eq $true) { $true } else { $false }
+                # $diarize = if ($Global:SAVED_DIARIZE -eq $true) { $true } else { $false }  # Feature not available yet
                 $dbSelection = if ($Global:SAVED_DB_SELECTION) { $Global:SAVED_DB_SELECTION } else { "fresh" }
                 
                 Write-Info "Loaded previous configuration"
@@ -708,14 +708,15 @@ function Invoke-StartCommand {
                 if ([string]::IsNullOrWhiteSpace($translateChoice)) { $translateChoice = $translateDefault }
                 $translate = $translateChoice -eq "y" -or $translateChoice -eq "Y"
                 
-                $savedDiarize = if ($Global:SAVED_DIARIZE -eq $true) { "true" } else { "false" }
-                $diarizeDefault = if ($savedDiarize -eq "true") { "y" } else { "N" }
-                $diarizeChoice = Read-Host "Enable speaker diarization? (y/N) [current: $savedDiarize]"
-                if ([string]::IsNullOrWhiteSpace($diarizeChoice)) { $diarizeChoice = $diarizeDefault }
-                $diarize = $diarizeChoice -eq "y" -or $diarizeChoice -eq "Y"
+                # $savedDiarize = if ($Global:SAVED_DIARIZE -eq $true) { "true" } else { "false" }
+                # $diarizeDefault = if ($savedDiarize -eq "true") { "y" } else { "N" }
+                # $diarizeChoice = Read-Host "Enable speaker diarization? (y/N) [current: $savedDiarize]"
+                # if ([string]::IsNullOrWhiteSpace($diarizeChoice)) { $diarizeChoice = $diarizeDefault }
+                # $diarize = $diarizeChoice -eq "y" -or $diarizeChoice -eq "Y"
                 
                 # Save the new preferences
-                Save-Preferences -Model $model -Port $port -AppPort $appPort -ForceMode $forceMode -Language $language -Translate $translate -Diarize $diarize -DbSelection $dbSelection
+                # Save-Preferences -Model $model -Port $port -AppPort $appPort -ForceMode $forceMode -Language $language -Translate $translate -Diarize $diarize -DbSelection $dbSelection
+                Save-Preferences -Model $model -Port $port -AppPort $appPort -ForceMode $forceMode -Language $language -Translate $translate -Diarize $false -DbSelection $dbSelection
                 Write-Host ""
             }
         }
@@ -908,7 +909,7 @@ function Invoke-StartCommand {
     $env:APP_PORT = $appPort
     $env:WHISPER_LANGUAGE = $language
     $env:WHISPER_TRANSLATE = if ($translate) { "true" } else { "false" }
-    $env:WHISPER_DIARIZE = if ($diarize) { "true" } else { "false" }
+    # $env:WHISPER_DIARIZE = if ($diarize) { "true" } else { "false" }  # Feature not available yet
     
     # Set local models directory for volume mounting
     $modelsDir = Join-Path $ScriptDir "models"
@@ -957,9 +958,9 @@ function Invoke-StartCommand {
     if ($translate) {
         Write-Info "Translation: enabled"
     }
-    if ($diarize) {
-        Write-Info "Diarization: enabled"
-    }
+    # if ($diarize) {  # Feature not available yet
+    #     Write-Info "Diarization: enabled"
+    # }
     
     if ($DryRun) {
         Write-Info "DRY RUN - Would run: $($composeArgs -join ' ')"
@@ -971,7 +972,7 @@ function Invoke-StartCommand {
         Write-Info "  DOCKERFILE=$dockerfile"
         Write-Info "  WHISPER_LANGUAGE=$language"
         Write-Info "  WHISPER_TRANSLATE=$(if ($translate) { 'true' } else { 'false' })"
-        Write-Info "  WHISPER_DIARIZE=$(if ($diarize) { 'true' } else { 'false' })"
+        # Write-Info "  WHISPER_DIARIZE=$(if ($diarize) { 'true' } else { 'false' })"  # Feature not available yet
     } else {
         if ($detach) {
             Write-Info "Starting services in background..."

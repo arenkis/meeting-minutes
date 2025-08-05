@@ -228,7 +228,7 @@ START OPTIONS:
   -c, --cpu               Force CPU mode for whisper
   --language LANG         Language code (default: auto)
   --translate             Enable translation to English
-  --diarize               Enable speaker diarization
+  # --diarize               Enable speaker diarization (feature not available yet)
   -d, --detach            Run in background
   -i, --interactive       Interactive setup with prompts
   --env-file FILE         Load environment from file
@@ -1035,7 +1035,7 @@ start_server() {
     local compose_env=()
     local language=""
     local translate="false"
-    local diarize="false"
+    # local diarize="false"  # Feature not available yet
     local interactive=false
     
     # Parse options
@@ -1069,10 +1069,10 @@ start_server() {
                 translate="true"
                 shift
                 ;;
-            --diarize)
-                diarize="true"
-                shift
-                ;;
+            # --diarize)  # Feature not available yet
+            #     diarize="true"
+            #     shift
+            #     ;;
             -d|--detach)
                 detach=true
                 shift
@@ -1134,7 +1134,7 @@ start_server() {
                 force_mode="${SAVED_FORCE_MODE:-$force_mode}"
                 language="${SAVED_LANGUAGE:-$language}"
                 translate="${SAVED_TRANSLATE:-$translate}"
-                diarize="${SAVED_DIARIZE:-$diarize}"
+                # diarize="${SAVED_DIARIZE:-$diarize}"  # Feature not available yet
                 db_selection="${SAVED_DB_SELECTION:-fresh}"
                 
                 log_info "✓ Loaded previous configuration"
@@ -1235,19 +1235,20 @@ start_server() {
                     translate="true"
                 fi
                 
-                local saved_diarize="${SAVED_DIARIZE:-false}"
-                local diarize_default="N"
-                if [[ "$saved_diarize" == "true" ]]; then
-                    diarize_default="y"
-                fi
-                read -p "$(echo -e "${YELLOW}Enable speaker diarization? (y/N) [current: $saved_diarize]: ${NC}")" diarize_choice
-                diarize_choice="${diarize_choice:-$diarize_default}"
-                if [[ "$diarize_choice" =~ ^[Yy] ]]; then
-                    diarize="true"
-                fi
+                # local saved_diarize="${SAVED_DIARIZE:-false}"
+                # local diarize_default="N"
+                # if [[ "$saved_diarize" == "true" ]]; then
+                #     diarize_default="y"
+                # fi
+                # read -p "$(echo -e "${YELLOW}Enable speaker diarization? (y/N) [current: $saved_diarize]: ${NC}")" diarize_choice
+                # diarize_choice="${diarize_choice:-$diarize_default}"
+                # if [[ "$diarize_choice" =~ ^[Yy] ]]; then
+                #     diarize="true"
+                # fi
                 
                 # Save the new preferences
-                save_preferences "$model" "$port" "$app_port" "$force_mode" "$language" "$translate" "$diarize" "$db_selection"
+                # save_preferences "$model" "$port" "$app_port" "$force_mode" "$language" "$translate" "$diarize" "$db_selection"
+                save_preferences "$model" "$port" "$app_port" "$force_mode" "$language" "$translate" "false" "$db_selection"
                 echo
                 ;;
         esac
@@ -1364,9 +1365,9 @@ start_server() {
     if [ "$translate" = "true" ]; then
         compose_env+=("WHISPER_TRANSLATE=true")
     fi
-    if [ "$diarize" = "true" ]; then
-        compose_env+=("WHISPER_DIARIZE=true")
-    fi
+    # if [ "$diarize" = "true" ]; then  # Feature not available yet
+    #     compose_env+=("WHISPER_DIARIZE=true")
+    # fi
     
     # Check if images exist, build if needed
     local build_type=""
@@ -1430,9 +1431,9 @@ start_server() {
     if [ "$translate" = "true" ]; then
         log_info "Translation: enabled"
     fi
-    if [ "$diarize" = "true" ]; then
-        log_info "Diarization: enabled"
-    fi
+    # if [ "$diarize" = "true" ]; then  # Feature not available yet
+    #     log_info "Diarization: enabled"
+    # fi
     
     if [ "$DRY_RUN" = "true" ]; then
         log_info "DRY RUN - Command would be:"
