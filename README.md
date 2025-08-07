@@ -49,34 +49,34 @@
 - [Overview](#overview)
 - [The Privacy Problem](#the-privacy-problem)
 - [Features](#features)
-- [Enterprise Solutions](#enterprise-solutions)
-- [Partnerships & Referrals](#partnerships--referrals)
 - [System Architecture](#system-architecture)
   - [Core Components](#core-components)
   - [Deployment Architecture](#deployment-architecture)
+- [Quick Start Guide](#quick-start-guide)
 - [Prerequisites](#prerequisites)
 - [Setup Instructions](#setup-instructions)
-  - [Windows OS](#windows-os)
-    - [Frontend Setup](#1-frontend-setup)
-    - [Backend Setup](#2-backend-setup)
-  - [macOS](#for-macos)
-    - [Frontend Setup](#1-frontend-setup-1)
-    - [Backend Setup](#2-backend-setup-1)
-- [Development Setup](#development-setup)
+  - [Windows Setup](#windows-setup)
+    - [Frontend Setup](#frontend-setup)
+    - [Backend Setup](#backend-setup)
+  - [macOS Setup](#macos-setup)
+    - [Frontend Setup](#frontend-setup-1)
+    - [Backend Setup](#backend-setup-1)
+  - [Docker Setup (Alternative)](#docker-setup-alternative)
 - [Whisper Model Selection](#whisper-model-selection)
-- [Known Issues](#known-issues)
 - [LLM Integration](#llm-integration)
   - [Supported Providers](#supported-providers)
-  - [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
-  - [Backend Issues](#backend-issues)
-  - [Frontend Issues](#frontend-issues)
+  - [Docker Issues](#docker-issues)
+  - [Native Installation Issues](#native-installation-issues)
+  - [General Issues](#general-issues)
+- [Developer Console](#developer-console)
 - [Uninstallation](#uninstallation)
+- [Enterprise Solutions](#enterprise-solutions)
+- [Partnerships & Referrals](#partnerships--referrals)
 - [Development Guidelines](#development-guidelines)
 - [Contributing](#contributing)
 - [License](#license)
 - [About Our Team](#about-our-team)
-- [Contributions](#contributions)
 - [Acknowledgments](#acknowledgments)
 - [Star History](#star-history)
 
@@ -128,6 +128,89 @@ Whether you're a defense consultant, enterprise executive, legal professional, o
 
 ---
 
+# Quick Start Guide
+
+Choose your setup method based on your needs:
+
+## 🚀 Option 1: Native Installation (Recommended for Best Performance)
+**Best for:** Regular users wanting optimal performance  
+**Time:** 10-15 minutes  
+**System Requirements:** 8GB+ RAM, 4GB+ disk space
+
+### Windows Users:
+1. **Frontend:** Download and run [meetily-frontend_0.0.5_x64-setup.exe](https://github.com/Zackriya-Solutions/meeting-minutes/releases/latest)
+2. **Backend:** Follow [Windows Backend Setup](#backend-setup)
+
+For safety and to maintain proper user permissions for frontend app:
+
+1. Go to [Latest Releases](https://github.com/Zackriya-Solutions/meeting-minutes/releases/latest)
+2. Download the file ending with `x64-setup.exe`
+3. **Important:** Before running, right-click the file → **Properties** → Check **Unblock** at bottom → **OK**
+
+
+<p align="center">
+    <img src="https://github.com/user-attachments/assets/f2a2655d-9881-42ed-88aa-357a1f5b6118" width="300" alt="Windows Security Warning" />
+</p>
+
+4. Double-click the installer to run it
+5. If Windows shows a security warning:
+   - Click `More info` and choose `Run anyway`, or
+   - Follow the permission dialog prompts
+6. Follow the installation wizard
+
+✅ **Success Check:** You should see the Meetily application window open successfully when launched.
+
+
+
+### macOS Users:
+1. **Complete Setup (Recommended):**
+   ```bash
+   # Install both frontend + backend
+   brew tap zackriya-solutions/meetily
+   brew install --cask meetily
+   
+   # Start the backend server
+   meetily-server --language en --model medium
+   ```
+2. Open **Meetily** from Applications folder
+
+## 🐳 Option 2: Docker Setup (Easier but Slower)
+**Best for:** Developers, quick testing, or multi-environment deployment  
+**Time:** 5-10 minutes  
+**System Requirements:** 16GB+ RAM (8GB minimum for Docker), Docker Desktop
+
+⚠️ **Performance Note:** Docker setup is 20-30% slower than native installation but offers easier dependency management.
+
+```bash
+# Navigate to backend directory
+cd backend
+
+# Windows (PowerShell)
+.\build-docker.ps1 cpu
+.\run-docker.ps1 start -Interactive
+
+# macOS/Linux (Bash)  
+./build-docker.sh cpu
+./run-docker.sh start --interactive
+```
+
+## ✅ Quick Success Check
+After setup, verify everything works:
+1. **Whisper Server:** Visit http://localhost:8178 (should show API interface)
+2. **Backend API:** Visit http://localhost:5167/docs (should show API documentation)
+3. **Frontend App:** Open Meetily application and test microphone access
+
+### 🚨 Common Issues
+- **Windows Defender blocking installer?** → See [Windows Defender Troubleshooting](#windows-defender-issues) below
+- **Can't access localhost:8178 or 5167?** → Check if backend is running and ports are available
+- **"Permission denied" errors?** → Run `chmod +x` on script files (macOS/Linux) or check execution policy (Windows)
+- **Docker containers crashing?** → Increase Docker RAM allocation to 12GB+ and check available disk space
+- **Audio not working?** → Grant microphone permissions to the app in system settings
+
+👉 **For detailed troubleshooting, see [Troubleshooting Section](#troubleshooting)**
+
+---
+
 # System Architecture
 
 <p align="center">
@@ -164,88 +247,107 @@ Whether you're a defense consultant, enterprise executive, legal professional, o
   - Transcript workers
   - LLM inference
 
-## Prerequisites
+# Prerequisites
 
-### For Docker Setup (Recommended)
-- Docker Desktop (Windows/Mac) or Docker Engine (Linux)
-- 16GB+ RAM (8GB minimum allocated to Docker)
-- 4+ CPU cores
-- 2GB+ disk space
-- For GPU: NVIDIA drivers + nvidia-container-toolkit (Windows/Linux only, GPU support coming soon)
+## 💻 System Requirements
 
-### For Native Setup
-- **System Requirements:**
-  - Python 3.9+ (recommended: 3.10 or 3.11)
-  - Node.js 18+ (recommended: 18.x or 20.x LTS)
-  - Git (with submodules support)
-  - 8GB+ RAM (recommended for Whisper models)
-  - 4GB+ free disk space
+### Minimum Requirements
+- **RAM:** 8GB (16GB+ recommended)
+- **Storage:** 4GB free space
+- **CPU:** 4+ cores
+- **OS:** Windows 10/11, macOS 10.15+, or Ubuntu 18.04+
 
-- **Required Dependencies:**
-  - **FFmpeg** (for audio processing):
-    - Windows: `winget install FFmpeg` or download from [ffmpeg.org](https://ffmpeg.org/download.html)
-    - macOS: `brew install ffmpeg`
-    - Linux: `sudo apt-get install ffmpeg` (Ubuntu/Debian) or `sudo yum install ffmpeg` (RHEL/CentOS)
-  - **CMake 3.22+** (for building Whisper.cpp)
-  - **C++ compiler** (platform-specific, see below)
+### Recommended Requirements  
+- **RAM:** 16GB+ (for large Whisper models)
+- **Storage:** 10GB+ free space
+- **CPU:** 8+ cores or Apple Silicon Mac
+- **GPU:** NVIDIA GPU with CUDA (optional, for faster processing)
 
-- **Platform-Specific Build Tools:**
-  - **Windows**: 
-    - Visual Studio Build Tools 2019+ with C++ development workload
-    - PowerShell 5.0+ (for running scripts)
-  - **macOS**: 
-    - Xcode Command Line Tools: `xcode-select --install`
-    - Homebrew: `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
-  - **Linux**: 
-    - Build essentials: `sudo apt-get install build-essential cmake git`
+## 🛠️ Required Software
 
-- **Optional (for LLM features):**
-  - Ollama (for local LLM models)
-  - API keys for Claude/Groq (for external LLM providers)
+### For Native Installation
+| Component | Windows | macOS | Purpose |
+|-----------|---------|-------|---------|
+| **Python** | 3.9+ ([python.org](https://python.org)) | `brew install python` | Backend runtime |
+| **Node.js** | 18+ LTS ([nodejs.org](https://nodejs.org)) | `brew install node` | Frontend build |
+| **Git** | ([git-scm.com](https://git-scm.com)) | Pre-installed | Code download |
+| **FFmpeg** | `winget install FFmpeg` | `brew install ffmpeg` | Audio processing |
+
+### For Docker Installation  
+- **Docker Desktop** ([docker.com](https://docker.com))
+- **16GB+ RAM** allocated to Docker
+- **4+ CPU cores** allocated to Docker
+
+## 🔧 Build Tools (Native Installation Only)
+
+### Windows
+```powershell
+# Install Visual Studio Build Tools (required for Whisper.cpp compilation)
+# Download from: https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2019
+```
+
+### macOS  
+```bash
+# Install Xcode Command Line Tools
+xcode-select --install
+
+# Install Homebrew (if not already installed)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+### Linux (Ubuntu/Debian)
+```bash
+sudo apt-get update
+sudo apt-get install build-essential cmake git ffmpeg python3 python3-pip nodejs npm
+```
+
+## 🤖 Optional LLM Integration
+- **Ollama** ([ollama.com](https://ollama.com)) - For local AI models
+- **API Keys** - For Claude (Anthropic) or Groq services
 
 
 # Setup Instructions
 
-## Windows OS
+## Windows Setup
 
-### 1. Frontend Setup
+⏱️ **Estimated Time:** 10-15 minutes total
 
-**Option 1: Using PowerShell (Recommended)**
+### Frontend Setup
+⏱️ **Time:** ~3-5 minutes
 
-Open Windows PowerShell and enter the command:
+**Manual Download (Recommended)**
 
-```powershell
-cd ~/Downloads; Invoke-WebRequest -Uri "https://github.com/Zackriya-Solutions/meeting-minutes/releases/download/v0.0.5/meetily-frontend_0.0.5_x64-setup.exe" -OutFile "meetily-setup.exe"; Unblock-File -Path "meetily-setup.exe"; Start-Process -FilePath "meetily-setup.exe" -ArgumentList "/S" -Wait; Remove-Item "meetily-setup.exe"
-```
+For safety and to maintain proper user permissions:
 
-Once done, open Meetily from desktop icon or by searching it on the Windows search tool.
-
-**Option 2: Using the Setup Executable (.exe)**
-
-1. Download the [meetily-frontend_0.0.5_x64-setup.exe](https://github.com/Zackriya-Solutions/meeting-minutes/releases/download/v0.0.5/meetily-frontend_0.0.5_x64-setup.exe) file
-2. Give permission
-
+1. Go to [Latest Releases](https://github.com/Zackriya-Solutions/meeting-minutes/releases/latest)
+2. Download the file ending with `x64-setup.exe`
+3. **Important:** Before running, right-click the file → **Properties** → Check **Unblock** at bottom → **OK**
+4. Double-click the installer to run it
+5. If Windows shows a security warning:
    - Click `More info` and choose `Run anyway`, or
-   - Right-click on the installer (.exe) from the downloads folder, select Properties, and check the Unblock checkbox at the bottom
+   - Follow the permission dialog prompts
 
 <p align="center">
     <img src="https://github.com/user-attachments/assets/f2a2655d-9881-42ed-88aa-357a1f5b6118" width="300" alt="Windows Security Warning" />
 </p>
 
-3. Double-click the installer to run it
-4. Follow the on-screen instructions to complete the installation
-5. The application will be available on your desktop
+6. Follow the installation wizard
+7. The application will be available on your desktop
 
-**Option 3: Using the MSI Installer (.msi)**
+✅ **Success Check:** You should see the Meetily application window open successfully when launched.
 
-1. Download the [meetily-frontend_0.0.5_x64_en-US.msi](https://github.com/Zackriya-Solutions/meeting-minutes/releases/download/v0.0.5/meetily-frontend_0.0.5_x64_en-US.msi) file
-2. Double-click the MSI file to run it
-3. Follow the installation wizard to complete the setup
-4. The application will be installed and available on your desktop
+**Alternative: MSI Installer (Less likely to be blocked)**
+
+1. Go to [Latest Releases](https://github.com/Zackriya-Solutions/meeting-minutes/releases/latest)
+2. Download the file ending with `x64_en-US.msi`
+3. Double-click the MSI file to run it
+4. Follow the installation wizard to complete the setup
+5. The application will be installed and available on your desktop
 
 Provide necessary permissions for audio capture and microphone access.
 
-### 2. Backend Setup
+### Backend Setup
+⏱️ **Time:** ~10-15 minutes (includes dependency installation)
 
 Click on the image to see installation video
 
@@ -277,14 +379,14 @@ Once the installation is complete, close the PowerShell terminal and open a new 
 
 Enter the following commands to build the backend:
 
-```bash
+```cmd
 cd meeting-minutes/backend
 .\build_whisper.cmd
 ```
 
 If the build fails, run the command again:
 
-```bash
+```cmd
 .\build_whisper.cmd
 ```
 
@@ -292,9 +394,11 @@ If the build fails, run the command again:
 
 Finally, when the installation is successful, run the backend using:
 
-```bash
+```powershell
 .\start_with_output.ps1
 ```
+
+✅ **Success Check:** You should see both Whisper server (port 8178) and Meeting app (port 5167) start successfully with log messages indicating they're running.
 
 #### Troubleshooting
 
@@ -315,130 +419,125 @@ Finally, when the installation is successful, run the backend using:
    .\start_with_output.ps1
    ```
 
-**Option 2: Docker Setup (Alternative)**
 
-⚠️ **Performance Warning**: Docker setup has known limitations:
-- **CPU-only mode may be slower** than native installation
-- **GPU support available for Windows and Linux** (NVIDIA GPUs with CUDA)
-- **Audio processing requires adequate resources** (16GB+ RAM recommended)
+## Docker Setup (Alternative)
 
-**For best performance, use Option 1 (Manual Setup). Docker is recommended if:**
-- You need easy deployment across multiple environments
-- You want automatic dependency management
-- You have sufficient system resources (16GB+ RAM, 4+ CPU cores)
+⚠️ **Performance Warning**: Docker setup is 20-30% slower than native installation but offers easier dependency management and consistent environments across different systems.
 
-**Prerequisites:**
-- Docker Desktop for Windows
+### Prerequisites
+- Docker Desktop (Windows/Mac) or Docker Engine (Linux)  
 - 16GB+ RAM (8GB minimum allocated to Docker)
 - 4+ CPU cores recommended
-- For GPU: NVIDIA drivers + nvidia-container-toolkit
+- For GPU: NVIDIA drivers + nvidia-container-toolkit (Windows/Linux only)
 
-**Quick Start:**
-```bash
-# Clone the repository
-git clone https://github.com/Zackriya-Solutions/meeting-minutes.git
-cd meeting-minutes/backend
+### Quick Start
 
-# Build and start (Windows PowerShell)
+#### Windows (PowerShell)
+```powershell
+# Navigate to backend directory
+cd backend
+
+# Build and start services
 .\build-docker.ps1 cpu                     # Build CPU version
 .\run-docker.ps1 start -Interactive        # Interactive setup (recommended)
-# OR
-.\run-docker.ps1 start -Detach            # Quick start with defaults
 ```
 
-**After startup, access:**
+#### macOS/Linux (Bash)
+```bash
+# Navigate to backend directory  
+cd backend
+
+# Build and start services
+./build-docker.sh cpu                      # Build CPU version
+./run-docker.sh start --interactive        # Interactive setup (recommended)
+```
+
+### After Startup
 - **Whisper Server**: http://localhost:8178
 - **Meeting App**: http://localhost:5167 (with API docs at `/docs`)
 
-**Basic Commands:**
+### Advanced Options
 ```bash
-# Management
-.\run-docker.ps1 stop                     # Stop services
-.\run-docker.ps1 status                   # Check service health
-.\run-docker.ps1 logs -Follow             # View logs
+# GPU acceleration (Windows/Linux only)
+.\build-docker.ps1 gpu  # Windows
+./build-docker.sh gpu   # Linux
 
-# Advanced options
-.\run-docker.ps1 start -Model large-v3 -Gpu -Language es -Detach
+# Custom configuration
+.\run-docker.ps1 start -Model large-v3 -Language es -Detach
+./run-docker.sh start --model large-v3 --language es --detach
 ```
 
-**Available Options:**
-- **GPU Support**: Use `.\build-docker.ps1 gpu`
-- **Custom Model**: Add `-Model large-v3` (tiny, base, small, medium, large-v3)
-- **Language**: Add `-Language es` (auto, en, es, fr, de, etc.)
-- **Different Ports**: Add `-Port 8081 -AppPort 5168`
-- **Features**: Add `-Translate` or `-Diarize`
+### Management Commands
+```bash
+# Check status and logs
+.\run-docker.ps1 status                   # Windows
+./run-docker.sh status                    # macOS/Linux
 
-For comprehensive Docker documentation, see [backend/README.md](backend/README.md#-docker-deployment-recommended).
+# Stop services
+.\run-docker.ps1 stop                     # Windows  
+./run-docker.sh stop                      # macOS/Linux
+```
 
-## For macOS:
+## macOS Setup
 
-### 1. Frontend Setup
+⏱️ **Estimated Time:** 5-10 minutes total
 
-Go to the [releases page](https://github.com/Zackriya-Solutions/meeting-minutes/releases) and download the latest version.
+**Option 1: Using Homebrew (Recommended) - Complete Setup**
+⏱️ **Time:** ~5-7 minutes
 
-
-**Option 1: Using Homebrew (Recommended)**
-
-> **Note** : This step installs the backend server and the frontend app.
-> Once the backend and the frontend are started, you can open the application from the Applications folder.
+> **Note**: This single command installs both the frontend app and backend server.
 
 ```bash
-# Install Meetily using Homebrew
+# Install Meetily (frontend + backend)
 brew tap zackriya-solutions/meetily
 brew install --cask meetily
 
 # Start the backend server
 meetily-server --language en --model medium
+```
+
+**How to use after installation:**
+1. Run `meetily-server` in terminal (keep it running)
+2. Open **Meetily** from Applications folder or Spotlight
+3. Grant microphone and screen recording permissions when prompted
+
+✅ **Success Check:** Meetily app should open and you should be able to start recording meetings immediately.
+
+**To update existing installation:**
+```bash
+# Update to latest version
+brew upgrade --cask meetily
 ```
 
 **Option 2: Manual Installation**
-- Download the `dmg_darwin_arch64.zip` file
-- Extract the file
-- Double-click the `.dmg` file inside the extracted folder
-- Drag the application to your Applications folder
-- Execute the following command in terminal to remove the quarantine attribute:
-```
-  xattr -c /Applications/meetily-frontend.app
-```
+⏱️ **Time:** ~8-12 minutes
 
-Provide necessary permissions for audio capture and microphone access.
+1. Download the latest [dmg_darwin_arch64.zip](https://github.com/Zackriya-Solutions/meeting-minutes/releases/latest) file
+2. Extract the file
+3. Double-click the `.dmg` file inside the extracted folder
+4. Drag the application to your Applications folder
+5. Remove quarantine attribute:
+   ```bash
+   xattr -c /Applications/meetily-frontend.app
+   ```
+6. Grant necessary permissions for audio capture and microphone access
+7. **Important**: You'll need to install the backend separately (see Manual Backend Setup below)
 
-### 2. Backend Setup
+### Backend Setup
 
-**Option 1: Using Homebrew (Recommended)**
+**Option 1: Using Homebrew Backend Only**
+⏱️ **Time:** ~3-5 minutes
 ```bash
-
-(Optional)
-
-# If meetily is already installed in your system, uninstall the current versions
-
-brew uninstall meetily
-
-brew uninstall meetily-backend
-
-brew untap zackriya-solutions/meetily
-
-```
-
-```bash
-
-  
-
-# Install Meetily using Homebrew
-
-brew tap zackriya-solutions/meetily
-
-brew install --cask meetily
-
-  
+# Install just the backend (if you manually installed frontend)
+brew tap zackriya-solutions/meetily  
+brew install meetily-backend
 
 # Start the backend server
-
 meetily-server --language en --model medium
-
 ```
 
-**Option 2: Manual Setup**
+**Option 2: Complete Manual Setup**
+⏱️ **Time:** ~10-15 minutes
 ```bash
 # Clone the repository
 git clone https://github.com/Zackriya-Solutions/meeting-minutes.git
@@ -460,59 +559,6 @@ chmod +x build_whisper.sh
 ./clean_start_backend.sh
 ```
 
-**Option 3: Docker Setup (Alternative)**
-
-⚠️ **Performance Warning**: Docker setup has known limitations:
-- **CPU-only mode may be slower** than native installation
-- **Metal GPU acceleration not yet supported** (CPU mode only on macOS)
-- **Audio processing requires adequate resources** (16GB+ RAM recommended)
-
-**For best performance, use Option 1 (Homebrew) or Option 2 (Manual). Docker is recommended if:**
-- You need easy deployment across multiple environments
-- You want automatic dependency management
-- You have sufficient system resources (16GB+ RAM, 4+ CPU cores)
-
-**Prerequisites:**
-- Docker Desktop for Mac
-- 16GB+ RAM (8GB minimum allocated to Docker)
-- 4+ CPU cores recommended
-
-**Quick Start:**
-```bash
-# Clone the repository
-git clone https://github.com/Zackriya-Solutions/meeting-minutes.git
-cd meeting-minutes/backend
-
-# Build and start (macOS/Linux)
-./build-docker.sh cpu                      # Build CPU version
-./run-docker.sh start --interactive        # Interactive setup (recommended)
-# OR
-./run-docker.sh start --detach            # Quick start with defaults
-```
-
-**After startup, access:**
-- **Whisper Server**: http://localhost:8178
-- **Meeting App**: http://localhost:5167 (with API docs at `/docs`)
-
-**Basic Commands:**
-```bash
-# Management
-./run-docker.sh stop                       # Stop services
-./run-docker.sh status                     # Check service health
-./run-docker.sh logs --follow              # View logs
-
-# Advanced options
-./run-docker.sh start --model large-v3 --language es --detach
-```
-
-**Available Options:**
-- **GPU Support**: Use `./build-docker.sh gpu` (NVIDIA only)
-- **Custom Model**: Add `--model large-v3` (tiny, base, small, medium, large-v3)
-- **Language**: Add `--language es` (auto, en, es, fr, de, etc.)
-- **Different Ports**: Add `--port 8081 --app-port 5168`
-- **Features**: Add `--translate` or `--diarize`
-
-For comprehensive Docker documentation, see [backend/README.md](backend/README.md#-docker-deployment-recommended).
 
 ### Development Setup
 
@@ -615,9 +661,11 @@ The backend supports multiple LLM providers through a unified interface. Current
 
 
 
-## Troubleshooting
+# Troubleshooting
 
-### Docker Issues
+Common issues and solutions organized by setup method:
+
+## Docker Issues
 
 #### Port Conflicts
 ```bash
@@ -661,6 +709,31 @@ If you see "Dropped old audio chunk X due to queue overflow" messages:
    ```
 
 ### Native Installation Issues
+
+### Windows Defender Issues
+
+If Windows Defender or antivirus software blocks the installer with "virus or potentially unwanted software" error:
+
+#### Option 1: Manual Unblock (Safest Method)
+1. Download the installer from [Latest Releases](https://github.com/Zackriya-Solutions/meeting-minutes/releases/latest)
+2. Right-click the downloaded `.exe` file → **Properties**
+3. Check the **Unblock** checkbox at the bottom → **OK**
+4. Double-click the installer to run it
+5. Follow the installation prompts
+
+#### Option 2: Windows Security Override
+1. Open **Windows Security** → **Virus & threat protection**
+2. Under **Virus & threat protection settings**, click **Manage settings**
+3. Scroll to **Exclusions** and click **Add or remove exclusions**
+4. Add the downloaded installer file as an exclusion
+5. Run the installer manually
+
+#### Option 3: Alternative Installation
+If Windows Defender continues to block:
+1. Use the MSI installer instead (often less flagged): Download `*x64_en-US.msi` from [releases](https://github.com/Zackriya-Solutions/meeting-minutes/releases/latest)
+2. Or use manual backend installation only and access via web browser at http://localhost:5167
+
+**Why this happens:** New software releases may trigger false positives in antivirus software until they build trust/reputation.
 
 #### Windows Build Problems
 ```cmd
