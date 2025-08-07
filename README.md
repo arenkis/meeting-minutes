@@ -659,8 +659,6 @@ The backend supports multiple LLM providers through a unified interface. Current
 - **Groq** (Llama3.2 90 B)
 - **Ollama** (Local models that supports function calling)
 
-
-
 # Troubleshooting
 
 Common issues and solutions organized by setup method:
