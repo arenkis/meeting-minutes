@@ -215,8 +215,19 @@ async def process_transcript_background(process_id: str, transcript: TranscriptR
     """Background task to process transcript"""
     try:
         logger.info(f"Starting background processing for process_id: {process_id}")
+        
+        # Early validation for common issues
+        if not transcript.text or not transcript.text.strip():
+            raise ValueError("Empty transcript text provided")
+        
+        if transcript.model in ["claude", "groq", "openai"]:
+            # Check if API key is available for cloud providers
+            api_key = await processor.db.get_api_key(transcript.model)
+            if not api_key:
+                provider_names = {"claude": "Anthropic", "groq": "Groq", "openai": "OpenAI"}
+                raise ValueError(f"{provider_names.get(transcript.model, transcript.model)} API key not configured. Please set your API key in the model settings.")
 
-        num_chunks, all_json_data = await processor.process_transcript(
+        _, all_json_data = await processor.process_transcript(
             text=transcript.text,
             model=transcript.model,
             model_name=transcript.model_name,
@@ -262,19 +273,6 @@ async def process_transcript_background(process_id: str, transcript: TranscriptR
                     elif key != "MeetingName" and key in json_dict and isinstance(json_dict[key], dict) and "blocks" in json_dict[key]:
                         if isinstance(json_dict[key]["blocks"], list):
                             final_summary[key]["blocks"].extend(json_dict[key]["blocks"])
-                            # Also add as a new section in MeetingNotes if not already present
-                            section_exists = False
-                            for section in final_summary["MeetingNotes"]["sections"]:
-                                if section["title"] == json_dict[key]["title"]:
-                                    section["blocks"].extend(json_dict[key]["blocks"])
-                                    section_exists = True
-                                    break
-                            
-                            if not section_exists:
-                                final_summary["MeetingNotes"]["sections"].append({
-                                    "title": json_dict[key]["title"],
-                                    "blocks": json_dict[key]["blocks"].copy() if json_dict[key]["blocks"] else []
-                                })
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON chunk for {process_id}: {e}. Chunk: {json_str[:100]}...")
             except Exception as e:
@@ -289,12 +287,21 @@ async def process_transcript_background(process_id: str, transcript: TranscriptR
             await processor.db.update_process(process_id, status="completed", result=json.dumps(final_summary))
             logger.info(f"Background processing completed for process_id: {process_id}")
         else:
-            error_msg = "Summary generation failed: No summary could be generated. Please check your model/API key settings."
+            error_msg = "Summary generation failed: No chunks were processed successfully. Check logs for specific errors."
             await processor.db.update_process(process_id, status="failed", error=error_msg)
             logger.error(f"Background processing failed for process_id: {process_id} - {error_msg}")
 
-    except Exception as e:
+    except ValueError as e:
+        # Handle specific value errors (like API key issues)
         error_msg = str(e)
+        logger.error(f"Configuration error in background processing for {process_id}: {error_msg}", exc_info=True)
+        try:
+            await processor.db.update_process(process_id, status="failed", error=error_msg)
+        except Exception as db_e:
+            logger.error(f"Failed to update DB status to failed for {process_id}: {db_e}", exc_info=True)
+    except Exception as e:
+        # Handle all other exceptions
+        error_msg = f"Processing error: {str(e)}"
         logger.error(f"Error in background processing for {process_id}: {error_msg}", exc_info=True)
         try:
             await processor.db.update_process(process_id, status="failed", error=error_msg)
@@ -360,6 +367,7 @@ async def get_summary(meeting_id: str):
             )
 
         status = result.get("status", "unknown").lower()
+        logger.debug(f"Summary status for meeting {meeting_id}: {status}, error: {result.get('error')}")
 
         # Parse result data if available
         summary_data = None
@@ -444,6 +452,7 @@ async def get_summary(meeting_id: str):
             response["error"] = result.get("error", "Unknown processing error")
             response["data"] = None
             response["meetingName"] = None
+            logger.info(f"Returning failed status with error: {response['error']}")
             return JSONResponse(status_code=400, content=response)
 
         elif status in ["processing", "pending", "started"]:
