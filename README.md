@@ -41,6 +41,10 @@
 
 </div>
 
+## For enterprise version: [Sign up for early access](https://meetily.zackriya.com/#pricing)
+
+## For Partnerships and Custom AI development: [Let's chat](https://www.zackriya.com/service-interest-form/)
+
 # Table of Contents
 - [Overview](#overview)
 - [The Privacy Problem](#the-privacy-problem)
@@ -89,10 +93,7 @@ While there are many meeting transcription tools available, this solution stands
 - **Customizable**: Self-host and modify for your specific needs
 - **Intelligent**: Built-in knowledge graph for semantic search across meetings
 
----
-## For enterprise version: [Sign up for early access](https://meetily.zackriya.com/#pricing)
 
-## For Partnerships and Custom AI development: [Let's chat](https://www.zackriya.com/service-interest-form/)
 
 ## The Privacy Problem
 
@@ -167,9 +168,10 @@ Whether you're a defense consultant, enterprise executive, legal professional, o
 
 ### For Docker Setup (Recommended)
 - Docker Desktop (Windows/Mac) or Docker Engine (Linux)
-- 8GB+ RAM allocated to Docker
+- 16GB+ RAM (8GB minimum allocated to Docker)
+- 4+ CPU cores
 - 2GB+ disk space
-- For GPU: NVIDIA drivers + nvidia-container-toolkit
+- For GPU: NVIDIA drivers + nvidia-container-toolkit (Windows/Linux only, GPU support coming soon)
 
 ### For Native Setup
 - **System Requirements:**
@@ -208,22 +210,35 @@ Whether you're a defense consultant, enterprise executive, legal professional, o
 
 ### 1. Frontend Setup
 
-**Option 1: Using the Setup Executable (.exe) (Recommended)**
-1. Download the `meetily-frontend_0.0.5_x64-setup.exe` file
-2. Double-click the installer to run it
-3. Follow the on-screen instructions to complete the installation
-4. The application will be available on your desktop
+**Option 1: Using PowerShell (Recommended)**
 
-**Note:** Windows may display a security warning. To bypass this:
-- Click `More info` and choose `Run anyway`, or
-- Right-click on the installer (.exe), select Properties, and check the Unblock checkbox at the bottom
+Open Windows PowerShell and enter the command:
+
+```powershell
+cd ~/Downloads; Invoke-WebRequest -Uri "https://github.com/Zackriya-Solutions/meeting-minutes/releases/download/v0.0.5/meetily-frontend_0.0.5_x64-setup.exe" -OutFile "meetily-setup.exe"; Unblock-File -Path "meetily-setup.exe"; Start-Process -FilePath "meetily-setup.exe" -ArgumentList "/S" -Wait; Remove-Item "meetily-setup.exe"
+```
+
+Once done, open Meetily from desktop icon or by searching it on the Windows search tool.
+
+**Option 2: Using the Setup Executable (.exe)**
+
+1. Download the [meetily-frontend_0.0.5_x64-setup.exe](https://github.com/Zackriya-Solutions/meeting-minutes/releases/download/v0.0.5/meetily-frontend_0.0.5_x64-setup.exe) file
+2. Give permission
+
+   - Click `More info` and choose `Run anyway`, or
+   - Right-click on the installer (.exe) from the downloads folder, select Properties, and check the Unblock checkbox at the bottom
 
 <p align="center">
     <img src="https://github.com/user-attachments/assets/f2a2655d-9881-42ed-88aa-357a1f5b6118" width="300" alt="Windows Security Warning" />
 </p>
 
-**Option 2: Using the MSI Installer (.msi)**
-1. Download the `meetily-frontend_0.0.5_x64_en-US.msi` file
+3. Double-click the installer to run it
+4. Follow the on-screen instructions to complete the installation
+5. The application will be available on your desktop
+
+**Option 3: Using the MSI Installer (.msi)**
+
+1. Download the [meetily-frontend_0.0.5_x64_en-US.msi](https://github.com/Zackriya-Solutions/meeting-minutes/releases/download/v0.0.5/meetily-frontend_0.0.5_x64_en-US.msi) file
 2. Double-click the MSI file to run it
 3. Follow the installation wizard to complete the setup
 4. The application will be installed and available on your desktop
@@ -232,46 +247,89 @@ Provide necessary permissions for audio capture and microphone access.
 
 ### 2. Backend Setup
 
+Click on the image to see installation video
 
 <p align="center">
-<a href="https://www.youtube.com/watch?v=Tu_8wXgoaDE">
-    <img src="https://img.youtube.com/vi/Tu_8wXgoaDE/0.jpg"  alt="Windows Security Warning" />
+<a href="https://www.youtube.com/watch?v=BeH7B-2nPMk">
+<img src="https://img.youtube.com/vi/BeH7B-2nPMk/0.jpg" alt="Windows Backend Setup Tutorial" />
 </a>
 </p>
 
-
 **Option 1: Manual Setup (Recommended)**
-1. Clone the repository:
-```bash
+
+**Step 1: Install Dependencies (Optional)**
+
+Open PowerShell as administrator and enter the following command to install dependencies:
+
+```powershell
+cd ~/Downloads
 git clone https://github.com/Zackriya-Solutions/meeting-minutes
 cd meeting-minutes/backend
+Set-ExecutionPolicy Bypass -Scope Process -Force
+.\install_dependancies_for_windows.ps1
 ```
 
-2. Build dependencies:
+**⚠️ This can take up to 30 minutes depending on your system**
+
+Once the installation is complete, close the PowerShell terminal and open a new terminal.
+
+**Step 2: Build Whisper**
+
+Enter the following commands to build the backend:
+
+```bash
+cd meeting-minutes/backend
+.\build_whisper.cmd
+```
+
+If the build fails, run the command again:
+
 ```bash
 .\build_whisper.cmd
 ```
 
-3. Start the backend servers:
+**Step 3: Start the Backend**
+
+Finally, when the installation is successful, run the backend using:
+
 ```bash
 .\start_with_output.ps1
 ```
 
+#### Troubleshooting
+
+1. **Warning - existing chocolatey installation is detected**
+
+   ![WhatsApp Image 2025-05-27 at 12 31 17 PM](https://github.com/user-attachments/assets/e2839c25-33e0-4972-808a-dd00c8bc568a)
+
+   To address this - Either use the current chocolatey version installed or remove the current one with:
+   ```powershell
+   rm C:\ProgramData\chocolatey
+   ```
+
+2. **Error - ./start_with_output.ps1 shows security error**
+
+   Run after making sure the file is unblocked:
+   ```powershell
+   Set-ExecutionPolicy Bypass -Scope Process -Force
+   .\start_with_output.ps1
+   ```
+
 **Option 2: Docker Setup (Alternative)**
 
 ⚠️ **Performance Warning**: Docker setup has known limitations:
-- **Whisper transcription is significantly slower** (2-3x slower than native)
-- **Backend response times are increased** due to containerization overhead
-- **Audio processing may drop chunks** under resource constraints
+- **CPU-only mode may be slower** than native installation
+- **GPU support available for Windows and Linux** (NVIDIA GPUs with CUDA)
+- **Audio processing requires adequate resources** (16GB+ RAM recommended)
 
-**For best performance, use Option 1 (Manual Setup). Only use Docker if:**
+**For best performance, use Option 1 (Manual Setup). Docker is recommended if:**
 - You need easy deployment across multiple environments
-- You're comfortable with reduced performance
-- You have sufficient system resources (8GB+ RAM, 4+ CPU cores)
+- You want automatic dependency management
+- You have sufficient system resources (16GB+ RAM, 4+ CPU cores)
 
 **Prerequisites:**
 - Docker Desktop for Windows
-- 8GB+ RAM allocated to Docker
+- 16GB+ RAM (8GB minimum allocated to Docker)
 - 4+ CPU cores recommended
 - For GPU: NVIDIA drivers + nvidia-container-toolkit
 
@@ -405,18 +463,18 @@ chmod +x build_whisper.sh
 **Option 3: Docker Setup (Alternative)**
 
 ⚠️ **Performance Warning**: Docker setup has known limitations:
-- **Whisper transcription is significantly slower** (2-3x slower than native)
-- **Backend response times are increased** due to containerization overhead
-- **Audio processing may drop chunks** under resource constraints
+- **CPU-only mode may be slower** than native installation
+- **Metal GPU acceleration not yet supported** (CPU mode only on macOS)
+- **Audio processing requires adequate resources** (16GB+ RAM recommended)
 
-**For best performance, use Option 1 (Homebrew) or Option 2 (Manual). Only use Docker if:**
+**For best performance, use Option 1 (Homebrew) or Option 2 (Manual). Docker is recommended if:**
 - You need easy deployment across multiple environments
-- You're comfortable with reduced performance
-- You have sufficient system resources (8GB+ RAM, 4+ CPU cores)
+- You want automatic dependency management
+- You have sufficient system resources (16GB+ RAM, 4+ CPU cores)
 
 **Prerequisites:**
 - Docker Desktop for Mac
-- 8GB+ RAM allocated to Docker
+- 16GB+ RAM (8GB minimum allocated to Docker)
 - 4+ CPU cores recommended
 
 **Quick Start:**
@@ -483,6 +541,18 @@ When setting up the backend (either via Homebrew, manual installation, or Docker
 | medium | ~769 MB | High | Slow | High accuracy requirements |
 | large-v3 | ~1550 MB | Best | Slowest | Maximum accuracy |
 
+#### Recommended Models by RAM
+
+**macOS (Metal acceleration):**
+- 8 GB RAM: small
+- 16 GB RAM: medium
+- 32 GB+ RAM: large-v3
+
+**Windows/Linux:**
+- 8 GB RAM: base or small
+- 16 GB RAM: medium
+- 32 GB+ RAM: large-v3
+
 #### Available Models
 
 1. **Standard models** (balance of accuracy and speed):
@@ -498,11 +568,41 @@ When setting up the backend (either via Homebrew, manual installation, or Docker
 **Recommendation:** Start with `base` model for general use, or `base.en` if you're only transcribing English content.
 
 
-### Known issues
+### Known Issues
+
+#### Common Issues
 - Smaller LLMs can hallucinate, making summarization quality poor; Please use model above 32B parameter size
 - Backend build process requires CMake, C++ compiler, etc. Making it harder to build
 - Backend build process requires Python 3.10 or newer
 - Frontend build process requires Node.js
+
+#### GPU Support Solution
+
+For those interested in using GPU for faster Whisper inference:
+
+**Windows/Linux GPU Setup:**
+
+1. **Modify build_whisper.cmd:**
+   - Locate line 55 in the build_whisper.cmd file
+   - Replace it with:
+   ```cmd
+   cmake .. -DBUILD_SHARED_LIBS=OFF -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_SERVER=ON -DGGML_CUDA=1
+   ```
+
+2. **Clean Rebuild Requirement:**
+   - If you have previously compiled whisper.cpp for CPU inference, a clean rebuild is essential
+   - Create a new directory, git clone meetily into this new folder, then execute the build script
+   - This ensures all components are compiled with GPU support from scratch
+
+3. **CUDA Toolkit Installation:**
+   - Verify that the CUDA Toolkit is correctly installed on your system
+   - This toolkit provides the necessary libraries and tools for CUDA development
+
+4. **Troubleshooting CMake Errors:**
+   - If errors persist, refer to [this Stack Overflow post](https://stackoverflow.com/questions/your-specific-issue)
+   - Copy required files to Visual Studio folder if needed
+
+For detailed GPU support discussion, see [Issue #126](https://github.com/Zackriya-Solutions/meeting-minutes/issues/126)
 
 ## LLM Integration
 
