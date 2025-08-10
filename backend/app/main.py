@@ -273,6 +273,19 @@ async def process_transcript_background(process_id: str, transcript: TranscriptR
                     elif key != "MeetingName" and key in json_dict and isinstance(json_dict[key], dict) and "blocks" in json_dict[key]:
                         if isinstance(json_dict[key]["blocks"], list):
                             final_summary[key]["blocks"].extend(json_dict[key]["blocks"])
+                            # Also add as a new section in MeetingNotes if not already present
+                            section_exists = False
+                            for section in final_summary["MeetingNotes"]["sections"]:
+                                if section["title"] == json_dict[key]["title"]:
+                                    section["blocks"].extend(json_dict[key]["blocks"])
+                                    section_exists = True
+                                    break
+                            
+                            if not section_exists:
+                                final_summary["MeetingNotes"]["sections"].append({
+                                    "title": json_dict[key]["title"],
+                                    "blocks": json_dict[key]["blocks"].copy() if json_dict[key]["blocks"] else []
+                                })
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON chunk for {process_id}: {e}. Chunk: {json_str[:100]}...")
             except Exception as e:
