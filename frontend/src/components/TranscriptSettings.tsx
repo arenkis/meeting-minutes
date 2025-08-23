@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSidebar } from './Sidebar/SidebarProvider';
 import { invoke } from '@tauri-apps/api/core';
+import { ModelManager } from './ModelManager';
 
 
 export interface TranscriptModelProps {
@@ -20,6 +21,7 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
     const [showApiKey, setShowApiKey] = useState<boolean>(false);
     const [isApiKeyLocked, setIsApiKeyLocked] = useState<boolean>(true);
     const [isLockButtonVibrating, setIsLockButtonVibrating] = useState<boolean>(false);
+    const [selectedWhisperModel, setSelectedWhisperModel] = useState<string>(transcriptModelConfig.model || 'large-v3');
     const { serverAddress } = useSidebar();
     // useEffect(() => {
     //     const fetchTranscriptSettings = async () => {
@@ -58,17 +60,33 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
         }
     };
     const modelOptions = {
-        localWhisper: ['large-v3'],
+        localWhisper: [selectedWhisperModel], // Dynamic model selection
         deepgram: ['nova-2-phonecall'],
         elevenLabs: ['eleven_multilingual_v2'],
         groq: ['llama-3.3-70b-versatile'],
         openai: ['gpt-4o'],
     };
-    const requiresApiKey = transcriptModelConfig.provider === 'deepgram' || transcriptModelConfig.provider === 'elevenLabs' || transcriptModelConfig.provider === 'openai' || transcriptModelConfig.provider === 'groq'|| transcriptModelConfig.provider === 'localWhisper';
+    
+    // Local Whisper doesn't require API key in the new architecture
+    const requiresApiKey = transcriptModelConfig.provider === 'deepgram' || transcriptModelConfig.provider === 'elevenLabs' || transcriptModelConfig.provider === 'openai' || transcriptModelConfig.provider === 'groq';
     const isDoneDisabled = requiresApiKey && (!apiKey || (typeof apiKey === 'string' && !apiKey.trim()));
 
+    const handleWhisperModelSelect = (modelName: string) => {
+        setSelectedWhisperModel(modelName);
+        if (transcriptModelConfig.provider === 'localWhisper') {
+            setTranscriptModelConfig({
+                ...transcriptModelConfig,
+                model: modelName
+            });
+        }
+    };
+
     const handleSave = () => {
-        const updatedConfig = { ...transcriptModelConfig, apiKey: typeof apiKey === 'string' ? apiKey.trim() || null : null };
+        const updatedConfig = { 
+            ...transcriptModelConfig, 
+            model: transcriptModelConfig.provider === 'localWhisper' ? selectedWhisperModel : transcriptModelConfig.model,
+            apiKey: typeof apiKey === 'string' ? apiKey.trim() || null : null 
+        };
         setTranscriptModelConfig(updatedConfig);
         onSave(updatedConfig);
     };
@@ -80,11 +98,11 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
         }
     };
     return (
-        <div>
+        <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">Transcript Settings</h3>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-4 pb-6">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                         Transcript Model
@@ -95,35 +113,63 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
                             value={transcriptModelConfig.provider}
                             onChange={(e) => {
                                 const provider = e.target.value as TranscriptModelProps['provider'];
-                                setTranscriptModelConfig({ ...transcriptModelConfig, provider, model: modelOptions[provider][0] });
-                                fetchApiKey(provider);
+                                const newModel = provider === 'localWhisper' ? selectedWhisperModel : modelOptions[provider][0];
+                                setTranscriptModelConfig({ ...transcriptModelConfig, provider, model: newModel });
+                                if (provider !== 'localWhisper') {
+                                    fetchApiKey(provider);
+                                }
                             }}
                         >
-                            <option value="localWhisper">Local Whisper</option>
-                            <option value="deepgram">Deepgram</option>
-                            <option value="elevenLabs">ElevenLabs</option>
-                            <option value="groq">Groq</option>
-                            <option value="openai">OpenAI</option>
+                            <option value="localWhisper">🏠 Local Whisper (Recommended)</option>
+                            <option value="deepgram">☁️ Deepgram (Backup)</option>
+                            <option value="elevenLabs">☁️ ElevenLabs</option>
+                            <option value="groq">☁️ Groq</option>
+                            <option value="openai">☁️ OpenAI</option>
                         </select>
                         
-                   
-                        <select
-                            className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                            value={transcriptModelConfig.model}
-                            onChange={(e) => {
-                                const model = e.target.value as TranscriptModelProps['model'];
-                                setTranscriptModelConfig({ ...transcriptModelConfig, model });
-                            }}
-                        >
-                            {modelOptions[transcriptModelConfig.provider].map((model) => (
-                                <option key={model} value={model}>{model}</option>
-                            ))}
-                        </select>
+                        {transcriptModelConfig.provider !== 'localWhisper' && (
+                            <select
+                                className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                value={transcriptModelConfig.model}
+                                onChange={(e) => {
+                                    const model = e.target.value as TranscriptModelProps['model'];
+                                    setTranscriptModelConfig({ ...transcriptModelConfig, model });
+                                }}
+                            >
+                                {modelOptions[transcriptModelConfig.provider].map((model) => (
+                                    <option key={model} value={model}>{model}</option>
+                                ))}
+                            </select>
+                        )}
                    
                     </div>
                 </div>
-                
-                    
+
+                {transcriptModelConfig.provider === 'localWhisper' && (
+                    <div className="mt-6">
+                        <ModelManager
+                            selectedModel={selectedWhisperModel}
+                            onModelSelect={handleWhisperModelSelect}
+                        />
+                    </div>
+                )}
+
+                {transcriptModelConfig.provider === 'localWhisper' && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                        <div className="flex items-start space-x-3">
+                            <span className="text-blue-600 mt-0.5">💡</span>
+                            <div>
+                                <h4 className="font-medium text-blue-900">Why Local Whisper?</h4>
+                                <ul className="text-sm text-blue-700 mt-1 space-y-1">
+                                    <li>• Complete privacy - audio never leaves your device</li>
+                                    <li>• No internet required for transcription</li>
+                                    <li>• No API costs or rate limits</li>
+                                    <li>• Consistent performance regardless of network</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 
                 {requiresApiKey && (
                 <div>
