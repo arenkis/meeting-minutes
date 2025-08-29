@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Bell, User, Lock, Database, Palette, ArrowLeft, Terminal } from 'lucide-react';
+import { Bell, User, Lock, Database, Palette, ArrowLeft, Terminal, Mic } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ConsoleToggle } from '@/components/ConsoleToggle';
+import { AudioDeviceSelector } from '@/components/AudioDeviceSelector';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -18,6 +19,11 @@ export default function SettingsPage() {
       title: 'Notifications',
       icon: <Bell className="w-5 h-5" />,
       items: ['Email Notifications', 'Push Notifications', 'Meeting Reminders']
+    },
+    {
+      title: 'Audio',
+      icon: <Mic className="w-5 h-5" />,
+      items: ['Device Selection']
     },
     {
       title: 'Privacy',
@@ -66,6 +72,15 @@ export default function SettingsPage() {
                 <div key={item} className="p-3 hover:bg-gray-50 rounded-md">
                   {item === 'Console' ? (
                     <ConsoleToggle />
+                  ) : item === 'Device Selection' ? (
+                    <AudioDeviceSelector 
+                      onDeviceChange={(micDevice, systemAudioEnabled) => {
+                        console.log('Audio device settings changed:', { micDevice, systemAudioEnabled });
+                        // Store settings in localStorage or app state
+                        localStorage.setItem('selectedMicDevice', micDevice || '');
+                        localStorage.setItem('systemAudioEnabled', systemAudioEnabled.toString());
+                      }}
+                    />
                   ) : (
                     <div className="flex items-center justify-between cursor-pointer">
                       <span>{item}</span>

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { 
   ModelInfo, 
   ModelStatus, 
   getModelIcon, 
   getStatusColor, 
   formatFileSize, 
-  MODEL_CONFIGS 
+  MODEL_CONFIGS,
+  WhisperAPI 
 } from '../types/whisper';
 import { ModelDownloadProgress, ProgressRing, DownloadSummary } from './ModelDownloadProgress';
 
@@ -26,49 +28,99 @@ export function ModelManager({ selectedModel, onModelSelect, className = '' }: M
     loadAvailableModels();
   }, []);
 
+  // Set up download progress event listeners
+  useEffect(() => {
+    let unlistenProgress: (() => void) | null = null;
+    let unlistenComplete: (() => void) | null = null;
+    let unlistenError: (() => void) | null = null;
+
+    const setupListeners = async () => {
+      // Listen for download progress updates
+      unlistenProgress = await listen<{ modelName: string; progress: number }>('model-download-progress', (event) => {
+        const { modelName, progress } = event.payload;
+        console.log(`Download progress for ${modelName}: ${progress}%`);
+        
+        setModels(prevModels => prevModels.map(model => {
+          if (model.name === modelName) {
+            return {
+              ...model,
+              status: { Downloading: progress } as ModelStatus
+            };
+          }
+          return model;
+        }));
+      });
+
+      // Listen for download completion
+      unlistenComplete = await listen<{ modelName: string }>('model-download-complete', (event) => {
+        const { modelName } = event.payload;
+        console.log(`Download completed for ${modelName}`);
+        
+        setModels(prevModels => prevModels.map(model => {
+          if (model.name === modelName) {
+            return {
+              ...model,
+              status: 'Available' as ModelStatus
+            };
+          }
+          return model;
+        }));
+        
+        setDownloadingModels(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(modelName);
+          return newSet;
+        });
+      });
+
+      // Listen for download errors
+      unlistenError = await listen<{ modelName: string; error: string }>('model-download-error', (event) => {
+        const { modelName, error } = event.payload;
+        console.error(`Download failed for ${modelName}:`, error);
+        
+        setModels(prevModels => prevModels.map(model => {
+          if (model.name === modelName) {
+            return {
+              ...model,
+              status: { Error: error } as ModelStatus
+            };
+          }
+          return model;
+        }));
+        
+        setDownloadingModels(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(modelName);
+          return newSet;
+        });
+      });
+    };
+
+    setupListeners();
+
+    return () => {
+      // Cleanup listeners
+      if (unlistenProgress) unlistenProgress();
+      if (unlistenComplete) unlistenComplete();
+      if (unlistenError) unlistenError();
+    };
+  }, []);
+
   const loadAvailableModels = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // For now, we'll use mock data until the Tauri commands are implemented
-      const mockModels: ModelInfo[] = [
-        {
-          name: 'large-v3',
-          path: 'backend/models/ggml-large-v3.bin',
-          sizeMb: 3000,
-          accuracy: 'High',
-          speed: 'Slow',
-          status: 'Available', // This model exists
-          description: MODEL_CONFIGS['large-v3'].description
-        },
-        {
-          name: 'medium',
-          path: 'backend/models/ggml-medium.bin',
-          sizeMb: 1400,
-          accuracy: 'Good',
-          speed: 'Medium',
-          status: 'Available', // This model exists
-          description: MODEL_CONFIGS['medium'].description
-        },
-        {
-          name: 'small',
-          path: 'backend/models/ggml-small.bin',
-          sizeMb: 465,
-          accuracy: 'Decent',
-          speed: 'Fast',
-          status: 'Available', // This model exists
-          description: MODEL_CONFIGS['small'].description
-        }
-      ];
-
-      // TODO: Replace with actual Tauri command when backend is ready
-      // const modelList = await invoke('get_available_models') as ModelInfo[];
-      setModels(mockModels);
+      // Initialize Whisper engine if not already done
+      await WhisperAPI.init();
+      
+      // Get actual model list from whisper-rs backend
+      const modelList = await WhisperAPI.getAvailableModels();
+      setModels(modelList);
       
       // Auto-select best available model if none selected
       if (!selectedModel) {
-        const availableModel = mockModels.find(m => m.status === 'Available');
+        const availableModel = modelList.find(m => m.status === 'Available');
         if (availableModel && onModelSelect) {
           onModelSelect(availableModel.name);
         }
@@ -85,33 +137,23 @@ export function ModelManager({ selectedModel, onModelSelect, className = '' }: M
     try {
       setDownloadingModels(prev => new Set([...prev, modelName]));
       
-      // Update model status to show download progress
-      setModels(prev => prev.map(model => 
-        model.name === modelName 
-          ? { ...model, status: { Downloading: 0 } }
-          : model
-      ));
-
-      // TODO: Replace with actual Tauri command when backend is ready
-      // await invoke('download_model', { modelName });
+      // Immediately set status to downloading with 0% progress
+      setModels(prevModels => prevModels.map(model => {
+        if (model.name === modelName) {
+          return {
+            ...model,
+            status: { Downloading: 0 } as ModelStatus
+          };
+        }
+        return model;
+      }));
       
-      // Simulate download progress for demo
-      for (let progress = 0; progress <= 100; progress += 10) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        setModels(prev => prev.map(model => 
-          model.name === modelName 
-            ? { ...model, status: { Downloading: progress } }
-            : model
-        ));
-      }
-
-      // Mark as available after download
-      setModels(prev => prev.map(model => 
-        model.name === modelName 
-          ? { ...model, status: 'Available' }
-          : model
-      ));
-
+      // Start real download using WhisperAPI
+      await WhisperAPI.downloadModel(modelName);
+      
+      // Refresh model list to get updated status
+      await loadAvailableModels();
+      
       setDownloadingModels(prev => {
         const newSet = new Set(prev);
         newSet.delete(modelName);
@@ -142,15 +184,16 @@ export function ModelManager({ selectedModel, onModelSelect, className = '' }: M
       onModelSelect(modelName);
     }
 
-    // TODO: Switch model in backend when ready
-    // try {
-    //   await invoke('switch_whisper_model', { modelName });
-    // } catch (err) {
-    //   console.error('Failed to switch model:', err);
-    // }
+    // Load model in whisper-rs backend
+    try {
+      await WhisperAPI.loadModel(modelName);
+      console.log(`Successfully loaded model: ${modelName}`);
+    } catch (err) {
+      console.error('Failed to switch model:', err);
+    }
   };
 
-  const getStatusBadge = (status: ModelStatus, modelName: string) => {
+  const getStatusBadge = (status: ModelStatus) => {
     if (status === 'Available') {
       return (
         <div className="flex items-center space-x-1">
@@ -281,7 +324,7 @@ export function ModelManager({ selectedModel, onModelSelect, className = '' }: M
                   </div>
 
                   <div className="flex flex-col items-end space-y-2">
-                    {getStatusBadge(model.status, model.name)}
+                    {getStatusBadge(model.status)}
                     
                     {model.status === 'Missing' && (
                       <button

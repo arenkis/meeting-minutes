@@ -14,9 +14,24 @@ rust-version = "1.77"
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+# Hardware acceleration features for whisper-rs
+[features]
+default = []  # Disable hardware acceleration temporarily to fix build issues
+# Hardware acceleration - enable based on target platform
+coreml = ["whisper-rs/coreml"]  # Apple CoreML (macOS/iOS)
+metal = ["whisper-rs/metal"]    # Apple Metal GPU (macOS)
+cuda = ["whisper-rs/cuda"]      # NVIDIA CUDA
+vulkan = ["whisper-rs/vulkan"]  # Cross-platform Vulkan
+openblas = ["whisper-rs/openblas"] # Optimized BLAS
+hipblas = ["whisper-rs/hipblas"]   # AMD ROCm HIP
+openmp = ["whisper-rs/openmp"]     # OpenMP parallel processing
+
 [build-dependencies]
 tauri-build = { version = "2.3.0", features = [] }
 reqwest = { version = "0.11", features = ["blocking", "multipart", "json"] }
+
+# Fix whisper-rs build issues on macOS
+[target.'cfg(target_os = "macos")'.build-dependencies]
 which = "6.0.1"
 
 [dependencies]
@@ -48,6 +63,11 @@ which = "6.0.1"
 # Bytes
 bytemuck = "1.16.1"
 
+# Whisper-rs for speech recognition 
+whisper-rs = { git = "https://github.com/tazz4843/whisper-rs", rev = "e3d67d5", features = ["raw-api", "tracing_backend"] }
+futures-util = "0.3"
+silero_rs = { git = "https://github.com/emotechlab/silero-rs", rev = "26a6460", package = "silero" }
+
 # Async
 tokio = { version = "1.32.0", features = ["full", "tracing"] }
 
@@ -59,6 +79,12 @@ dashmap = "6.1.0"
 
 # Directories
 dirs = "5.0.1"
+
+# Error handling for new modules
+thiserror = "1.0"
+
+# System interfaces
+libc = "0.2"
 
 lazy_static = { version = "1.4.0" }
 realfft = "3.4.0"
@@ -87,6 +113,7 @@ tauri-plugin-log = { version = "2.6.0", features = ["colored"] }
 anyhow = "1.0"
 time = { version = "0.3", features = ["formatting"] }
 reqwest = { version = "0.11", features = ["multipart", "json"] }
+cidre = { git = "https://github.com/yury/cidre", rev = "6f9d1f4" }
 
 [dev-dependencies]
 tempfile = "3.3.0"

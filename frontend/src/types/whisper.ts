@@ -104,3 +104,44 @@ export function getRecommendedModel(systemSpecs?: { ram: number; cores: number }
   }
   return 'small'; // Lower-spec system
 }
+
+// Tauri command wrappers for whisper-rs backend
+import { invoke } from '@tauri-apps/api/core';
+
+export class WhisperAPI {
+  static async init(): Promise<void> {
+    await invoke('whisper_init');
+  }
+  
+  static async getAvailableModels(): Promise<ModelInfo[]> {
+    return await invoke('whisper_get_available_models');
+  }
+  
+  static async loadModel(modelName: string): Promise<void> {
+    await invoke('whisper_load_model', { modelName });
+  }
+  
+  static async getCurrentModel(): Promise<string | null> {
+    return await invoke('whisper_get_current_model');
+  }
+  
+  static async isModelLoaded(): Promise<boolean> {
+    return await invoke('whisper_is_model_loaded');
+  }
+  
+  static async transcribeAudio(audioData: number[]): Promise<string> {
+    return await invoke('whisper_transcribe_audio', { audioData });
+  }
+  
+  static async getModelsDirectory(): Promise<string> {
+    return await invoke('whisper_get_models_directory');
+  }
+  
+  static async downloadModel(modelName: string): Promise<void> {
+    await invoke('whisper_download_model', { modelName });
+  }
+  
+  static async cancelDownload(modelName: string): Promise<void> {
+    await invoke('whisper_cancel_download', { modelName });
+  }
+}

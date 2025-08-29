@@ -3,12 +3,7 @@
     windows_subsystem = "windows"
 )]
 
-use log;
-use env_logger;
-
 fn main() {
-    std::env::set_var("RUST_LOG", "info");
-    env_logger::init();
-    log::info!("Starting application...");
+    // The Tauri app will handle logging configuration in lib.rs
     app_lib::run();
 }

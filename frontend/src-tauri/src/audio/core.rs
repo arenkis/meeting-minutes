@@ -1,4 +1,5 @@
-use super::audio_processing::audio_to_mono; 
+use super::audio_processing::audio_to_mono;
+use super::channel::{ManagedChannel, RecoveryStrategy};
 use anyhow::{anyhow, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::StreamError;
@@ -59,7 +60,7 @@ pub enum DeviceType {
     Output,
 }
 
-#[derive(Clone, Eq, PartialEq, Hash, Serialize, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
 pub struct AudioDevice {
     pub name: String,
     pub device_type: DeviceType,
@@ -378,11 +379,79 @@ pub fn trigger_audio_permission() -> Result<()> {
     Ok(())
 }
 
+#[cfg(target_os = "macos")]
+pub fn request_screen_recording_permission() -> Result<()> {
+    use std::process::Command;
+    
+    info!("Requesting Screen Recording permission for system audio capture");
+    
+    // Check if we already have permission
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg("sqlite3 ~/Library/Application\\ Support/com.apple.TCC/TCC.db \"SELECT allowed FROM access WHERE service='kTCCServiceScreenCapture' AND client LIKE '%meetily%'\" 2>/dev/null || echo '0'")
+        .output();
+    
+    match output {
+        Ok(output) => {
+            let result_str = String::from_utf8_lossy(&output.stdout);
+            let result = result_str.trim();
+            if result == "1" {
+                info!("Screen Recording permission already granted");
+                return Ok(());
+            }
+        }
+        Err(e) => {
+            warn!("Could not check Screen Recording permission status: {}", e);
+        }
+    }
+    
+    // Try to programmatically request permission by accessing screen capture
+    match Command::new("osascript")
+        .arg("-e")
+        .arg(r#"
+        tell application "System Events"
+            try
+                set frontApp to first application process whose frontmost is true
+                return "success"
+            on error
+                return "denied"
+            end try
+        end tell
+        "#)
+        .output()
+    {
+        Ok(output) => {
+            let result_str = String::from_utf8_lossy(&output.stdout);
+            let result = result_str.trim();
+            if result.contains("denied") {
+                warn!("Screen Recording permission required but not granted");
+                // Open System Preferences to the correct pane
+                let _ = Command::new("open")
+                    .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
+                    .spawn();
+                return Err(anyhow!("Screen Recording permission required. Please enable it in System Settings → Privacy & Security → Screen Recording"));
+            }
+        }
+        Err(e) => {
+            warn!("Failed to check screen recording access: {}", e);
+        }
+    }
+    
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn request_screen_recording_permission() -> Result<()> {
+    // Not needed on other platforms
+    Ok(())
+}
+
 #[derive(Clone)]
 pub struct AudioStream {
     pub device: Arc<AudioDevice>,
     pub device_config: cpal::SupportedStreamConfig,
-    transmitter: Arc<tokio::sync::broadcast::Sender<Vec<f32>>>,
+    managed_channel: Arc<ManagedChannel<Vec<f32>>>,
+    broadcast_sender: broadcast::Sender<Vec<f32>>,
     stream_control: mpsc::Sender<StreamControl>,
     stream_thread: Option<Arc<tokio::sync::Mutex<Option<thread::JoinHandle<()>>>>>,
     is_disconnected: Arc<AtomicBool>,
@@ -390,6 +459,7 @@ pub struct AudioStream {
 
 enum StreamControl {
     Stop(oneshot::Sender<()>),
+    Recover(oneshot::Sender<()>),
 }
 
 impl AudioStream {
@@ -398,8 +468,20 @@ impl AudioStream {
         is_running: Arc<AtomicBool>,
     ) -> Result<Self> {
         info!("Initializing audio stream for device: {}", device.to_string());
-        let (tx, _) = broadcast::channel::<Vec<f32>>(1000);
-        let tx_clone = tx.clone();
+        
+        // Create managed channel with recovery strategy
+        let channel_id = format!("audio_stream_{}", device.to_string());
+        let managed_channel = Arc::new(
+            ManagedChannel::new(
+                1000, // Initial capacity
+                RecoveryStrategy::ExponentialBackoff {
+                    base_delay_ms: 100,
+                    max_delay_ms: 5000,
+                    max_retries: 5,
+                },
+                channel_id,
+            )
+        );
         
         // Get device and config with improved error handling
         let (cpal_audio_device, config) = match get_device_and_config(&device).await {
@@ -452,10 +534,15 @@ impl AudioStream {
         info!("Audio config - Sample rate: {}, Channels: {}, Format: {:?}", 
             config.sample_rate().0, channels, config.sample_format());
 
+        // Create a direct broadcast channel for sync operations from audio callback
+        let (broadcast_sender, _) = broadcast::channel::<Vec<f32>>(1000);
+
         let is_running_weak_2 = Arc::downgrade(&is_running);
         let is_disconnected = Arc::new(AtomicBool::new(false));
         let device_clone = device.clone();
         let config_clone = config.clone();
+        let managed_channel_clone = managed_channel.clone();
+        let broadcast_sender_clone = broadcast_sender.clone();
         let (stream_control_tx, stream_control_rx) = mpsc::channel();
 
         let is_disconnected_clone = is_disconnected.clone();
@@ -465,42 +552,69 @@ impl AudioStream {
             let device_name = device.to_string();
             let device_name_clone = device_name.clone();  // Clone for the closure
             let config = config_clone;
+            let managed_channel = managed_channel_clone;
             info!("Starting audio stream thread for device: {}", device_name);
             let is_running_weak_for_error = is_running_weak_2.clone();
             let is_running_weak_for_data = is_running_weak_2.clone();
             let error_callback = move |err: StreamError| {
-                if err
-                    .to_string()
-                    .contains("The requested device is no longer available")
-                {
+                let error_msg = err.to_string();
+                let error_lower = error_msg.to_lowercase();
+                
+                // 🔄 Improved Error Recovery Logic
+                if error_msg.contains("The requested device is no longer available") ||
+                   error_msg.contains("device is no longer valid") {
                     warn!(
-                        "audio device {} disconnected. stopping recording.",
+                        "🔄 Audio device {} temporarily unavailable, attempting recovery...",
                         device_name_clone
                     );
-                    stream_control_tx_clone
-                        .send(StreamControl::Stop(oneshot::channel().0))
-                        .unwrap();
-
+                    
+                    // Instead of immediately stopping, mark as disconnected and let the main loop handle reconnection
                     is_disconnected_clone.store(true, Ordering::Relaxed);
-                } else if err.to_string().to_lowercase().contains("permission denied") || 
-                         err.to_string().to_lowercase().contains("access denied") {
-                    error!("Permission denied for audio device {}. Please check microphone permissions.", device_name_clone);
-                    if let Some(arc) = is_running_weak_for_error.upgrade() {
-                        arc.store(false, Ordering::Relaxed);
+                    
+                    // Send a recovery signal instead of stop
+                    if let Err(e) = stream_control_tx_clone.send(StreamControl::Recover(oneshot::channel().0)) {
+                        warn!("Failed to send recovery signal: {}", e);
+                        // Fallback to stop if recovery signal fails
+                        let _ = stream_control_tx_clone.send(StreamControl::Stop(oneshot::channel().0));
                     }
+                    
+                } else if error_lower.contains("permission denied") || 
+                          error_lower.contains("access denied") ||
+                          error_lower.contains("tcc") ||
+                          error_lower.contains("declined") {
+                    error!("🚫 Permission denied for audio device {}. Please check permissions.", device_name_clone);
+                    
+                    // For permission issues, try to continue but log the error
+                    warn!("Continuing with reduced functionality due to permission issues");
+                    
+                } else if error_lower.contains("timeout") || 
+                          error_lower.contains("timed out") ||
+                          error_lower.contains("connection lost") {
+                    warn!("⏰ Audio stream timeout for device {}, attempting recovery...", device_name_clone);
+                    
+                    // For timeout issues, mark as disconnected for reconnection attempt
+                    is_disconnected_clone.store(true, Ordering::Relaxed);
+                    
                 } else {
-                    error!("an error occurred on the audio stream: {}", err);
-                    if err.to_string().contains("device is no longer valid") {
-                        warn!("audio device disconnected. stopping recording.");
-                        if let Some(arc) = is_running_weak_for_error.upgrade() {
-                            arc.store(false, Ordering::Relaxed);
-                        }
+                    error!("⚠️ Audio stream error on device {}: {}", device_name_clone, error_msg);
+                    
+                    // For other errors, check if they're recoverable
+                    if error_lower.contains("buffer") || 
+                       error_lower.contains("overflow") ||
+                       error_lower.contains("underflow") {
+                        warn!("🔄 Buffer-related error, attempting to continue...");
+                        // These are usually recoverable, continue operation
+                    } else {
+                        // For unknown errors, mark as disconnected for potential reconnection
+                        warn!("🔄 Unknown error type, marking device as disconnected for recovery");
+                        is_disconnected_clone.store(true, Ordering::Relaxed);
                     }
                 }
             };
 
             let stream = match config.sample_format() {
                 cpal::SampleFormat::F32 => {
+                    let managed_channel_f32 = managed_channel.clone();
                     match cpal_audio_device.build_input_stream(
                         &config.into(),
                         move |data: &[f32], _: &_| {
@@ -516,8 +630,10 @@ impl AudioStream {
                             }
                             let mono = audio_to_mono(data, channels);
                             debug!("Received audio chunk: {} samples", mono.len());
-                            if let Err(e) = tx.send(mono) {
-                                error!("Failed to send audio data: {}", e);
+                            
+                            // Send directly to broadcast channel (sync operation)
+                            if let Err(e) = broadcast_sender_clone.send(mono) {
+                                warn!("Failed to send audio data: {}", e);
                             }
                         },
                         error_callback.clone(),
@@ -531,6 +647,7 @@ impl AudioStream {
                     }
                 }
                 cpal::SampleFormat::I16 => {
+                    let managed_channel_i16 = managed_channel.clone();
                     match cpal_audio_device.build_input_stream(
                         &config.into(),
                         move |data: &[i16], _: &_| {
@@ -546,8 +663,10 @@ impl AudioStream {
                             }
                             let mono = audio_to_mono(bytemuck::cast_slice(data), channels);
                             debug!("Received audio chunk: {} samples", mono.len());
-                            if let Err(e) = tx.send(mono) {
-                                error!("Failed to send audio data: {}", e);
+                            
+                            // Send directly to broadcast channel (sync operation)
+                            if let Err(e) = broadcast_sender_clone.send(mono) {
+                                warn!("Failed to send audio data: {}", e);
                             }
                         },
                         error_callback.clone(),
@@ -561,6 +680,7 @@ impl AudioStream {
                     }
                 }
                 cpal::SampleFormat::I32 => {
+                    let managed_channel_i32 = managed_channel.clone();
                     match cpal_audio_device.build_input_stream(
                         &config.into(),
                         move |data: &[i32], _: &_| {
@@ -576,8 +696,10 @@ impl AudioStream {
                             }
                             let mono = audio_to_mono(bytemuck::cast_slice(data), channels);
                             debug!("Received audio chunk: {} samples", mono.len());
-                            if let Err(e) = tx.send(mono) {
-                                error!("Failed to send audio data: {}", e);
+                            
+                            // Send directly to broadcast channel (sync operation)
+                            if let Err(e) = broadcast_sender_clone.send(mono) {
+                                warn!("Failed to send audio data: {}", e);
                             }
                         },
                         error_callback.clone(),
@@ -591,6 +713,7 @@ impl AudioStream {
                     }
                 }
                 cpal::SampleFormat::I8 => {
+                    let managed_channel_i8 = managed_channel.clone();
                     match cpal_audio_device.build_input_stream(
                         &config.into(),
                         move |data: &[i8], _: &_| {
@@ -606,8 +729,10 @@ impl AudioStream {
                             }
                             let mono = audio_to_mono(bytemuck::cast_slice(data), channels);
                             debug!("Received audio chunk: {} samples", mono.len());
-                            if let Err(e) = tx.send(mono) {
-                                error!("Failed to send audio data: {}", e);
+                            
+                            // Send directly to broadcast channel (sync operation)
+                            if let Err(e) = broadcast_sender_clone.send(mono) {
+                                warn!("Failed to send audio data: {}", e);
                             }
                         },
                         error_callback.clone(),
@@ -638,37 +763,71 @@ impl AudioStream {
                 return;
             }
             info!("Audio stream started successfully for device: {}", device_name);
-            if let Ok(StreamControl::Stop(response)) = stream_control_rx.recv() {
-                info!("stopping audio stream...");
-                // First stop the stream
-                if let Err(e) = stream.pause() {
-                    error!("failed to pause stream: {}", e);
+            match stream_control_rx.recv() {
+                Ok(StreamControl::Stop(response)) => {
+                    info!("stopping audio stream...");
+                    // First stop the stream
+                    if let Err(e) = stream.pause() {
+                        error!("failed to pause stream: {}", e);
+                    }
+                    // Close the stream to release OS resources
+                    drop(stream);
+                    // Signal completion
+                    response.send(()).ok();
+                    info!("audio stream stopped and cleaned up");
                 }
-                // Close the stream to release OS resources
-                drop(stream);
-                // Signal completion
-                response.send(()).ok();
-                info!("audio stream stopped and cleaned up");
+                Ok(StreamControl::Recover(response)) => {
+                    info!("🔄 Recovery signal received, attempting to restart audio stream...");
+                    
+                    // Pause current stream
+                    if let Err(e) = stream.pause() {
+                        warn!("failed to pause stream during recovery: {}", e);
+                    }
+                    
+                    // Try to restart the stream
+                    match stream.play() {
+                        Ok(_) => {
+                            info!("✅ Audio stream recovered successfully");
+                            response.send(()).ok();
+                        }
+                        Err(e) => {
+                            error!("❌ Failed to recover audio stream: {}", e);
+                            // If recovery fails, fall back to stop
+                            drop(stream);
+                            response.send(()).ok();
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("Stream control channel error: {}", e);
+                    return;
+                }
             }
         }))));
 
         Ok(AudioStream {
             device,
             device_config: config,
-            transmitter: Arc::new(tx_clone),
+            managed_channel,
+            broadcast_sender,
             stream_control: stream_control_tx,
             stream_thread: Some(stream_thread),
             is_disconnected,
         })
     }
 
-    pub async fn subscribe(&self) -> broadcast::Receiver<Vec<f32>> {
-        self.transmitter.subscribe()
+    pub async fn subscribe(&self) -> Result<broadcast::Receiver<Vec<f32>>> {
+        Ok(self.broadcast_sender.subscribe())
     }
 
     pub async fn stop(&self) -> Result<()> {
         // Mark as disconnected first
         self.is_disconnected.store(true, Ordering::Release);
+        
+        // Close managed channel first
+        if let Err(e) = self.managed_channel.close().await {
+            warn!("Failed to close managed channel: {}", e);
+        }
         
         // Send stop signal and wait for confirmation
         let (tx, _rx) = oneshot::channel();
@@ -692,6 +851,35 @@ impl AudioStream {
         }
 
         Ok(())
+    }
+
+    /// Attempt to recover the audio stream after an error
+    pub async fn attempt_recovery(&self) -> Result<bool> {
+        info!("🔄 Attempting to recover audio stream for device: {}", self.device.name);
+        
+        // Use managed channel's built-in recovery system
+        match self.managed_channel.initiate_recovery().await {
+            Ok(_) => {
+                info!("✅ Managed channel recovery initiated successfully");
+                // Reset disconnected flag
+                self.is_disconnected.store(false, Ordering::Release);
+                Ok(true)
+            }
+            Err(e) => {
+                warn!("Managed channel recovery failed: {}", e);
+                Ok(false)
+            }
+        }
+    }
+    
+    /// Get channel health status
+    pub async fn channel_health(&self) -> super::channel::ChannelHealthMetrics {
+        self.managed_channel.health_metrics().await
+    }
+    
+    /// Check if channel is healthy
+    pub async fn is_channel_healthy(&self) -> bool {
+        self.managed_channel.is_healthy().await
     }
 }
 

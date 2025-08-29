@@ -8,6 +8,7 @@ import { ProcessRequest, SummaryResponse } from '@/types/summary';
 import { listen } from '@tauri-apps/api/event';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Analytics from '@/lib/analytics';
+import { useAudioDeviceSettings } from '@/hooks/useAudioDeviceSettings';
 
 interface RecordingControlsProps {
   isRecording: boolean;
@@ -36,6 +37,7 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
   const [isStopping, setIsStopping] = useState(false);
   const MIN_RECORDING_DURATION = 2000; // 2 seconds minimum recording time
   const [transcriptionErrors, setTranscriptionErrors] = useState(0);
+  const { settings } = useAudioDeviceSettings();
 
 
   const currentTime = 0;
@@ -70,7 +72,23 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
     setTranscript(''); // Clear any previous transcript
     
     try {
-      await invoke('start_recording');
+      const dataDir = await appDataDir();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const savePath = `${dataDir}/recording-${timestamp}.wav`;
+      
+      // Use device-specific recording if available, otherwise fall back to default
+      if (settings.selectedMicDevice || settings.systemAudioEnabled !== true) {
+        console.log('Using custom audio devices:', settings);
+        await invoke('start_recording_with_devices', { 
+          micDeviceName: settings.selectedMicDevice, 
+          systemAudioEnabled: settings.systemAudioEnabled,
+          savePath: savePath
+        });
+      } else {
+        console.log('Using default recording');
+        await invoke('start_recording');
+      }
+      
       console.log('Recording started successfully');
       setIsProcessing(false);
       onRecordingStart();
@@ -91,7 +109,7 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
       const savePath = `${dataDir}/recording-${timestamp}.wav`;
       
       console.log('Saving recording to:', savePath);
-      const result = await invoke('stop_recording', { 
+      await invoke('stop_recording', { 
         args: {
           save_path: savePath
         }
