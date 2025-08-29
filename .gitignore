@@ -72,7 +72,8 @@ node_modules/
 *.njsproj
 *.sln
 *.sw?
-experiments/
+# experiments/
 .cursor/
+backup/
 
 

@@ -42,7 +42,7 @@ impl Default for StreamingWhisperConfig {
         Self {
             sample_rate: 16000,
             max_context_samples: 480000, // 30 seconds @ 16kHz
-            context_overlap_samples: 16000, // 1 second @ 16kHz
+            context_overlap_samples: 48000, // 1 second @ 16kHz
             max_retries: 3,
             base_temperature: 0.0,
             temperature_increment: 0.2,

@@ -243,18 +243,8 @@ impl TranscriptAccumulator {
             // Clear the last emitted partial text since we're completing the sentence
             self.last_emitted_partial_text.clear();
             
-            // Calculate actual elapsed time from recording start
-            let (start_elapsed, end_elapsed) = if let Some(recording_start) = self.recording_start_time {
-                // Calculate when this sentence actually started and ended relative to recording start
-                let sentence_start_elapsed = self.current_chunk_start_time + (self.sentence_start_time as f64 / 1000.0);
-                let sentence_end_elapsed = self.current_chunk_start_time + (segment.t1 as f64 / 1000.0);
-                (sentence_start_elapsed.max(0.0), sentence_end_elapsed.max(0.0))
-            } else {
-                // Fallback to chunk-relative times if recording start time not available
-                let sentence_start_elapsed = self.current_chunk_start_time + (self.sentence_start_time as f64 / 1000.0);
-                let sentence_end_elapsed = self.current_chunk_start_time + (segment.t1 as f64 / 1000.0);
-                (sentence_start_elapsed.max(0.0), sentence_end_elapsed.max(0.0))
-            };
+            // Calculate actual elapsed time using consistent chunk-based timing
+            let start_elapsed = (self.current_chunk_start_time + (self.sentence_start_time as f64 / 1000.0)).max(0.0);
             
             let update = TranscriptUpdate {
                 text: sentence.trim().to_string(),
@@ -280,26 +270,16 @@ impl TranscriptAccumulator {
             // Clear the last emitted partial text since we're timing out the sentence
             self.last_emitted_partial_text.clear();
             
-            // Calculate actual elapsed time from recording start for timeout
-            let (start_elapsed, end_elapsed) = if let Some(recording_start) = self.recording_start_time {
-                // For timeout, we know the sentence started at sentence_start_time and is timing out now
-                let sentence_start_elapsed = self.current_chunk_start_time + (self.sentence_start_time as f64 / 1000.0);
-                let sentence_end_elapsed = sentence_start_elapsed + (SENTENCE_TIMEOUT_MS as f64 / 1000.0);
-                (sentence_start_elapsed.max(0.0), sentence_end_elapsed.max(0.0))
-            } else {
-                // Fallback to chunk-relative times
-                let sentence_start_elapsed = self.current_chunk_start_time + (self.sentence_start_time as f64 / 1000.0);
-                let sentence_end_elapsed = sentence_start_elapsed + (SENTENCE_TIMEOUT_MS as f64 / 1000.0);
-                (sentence_start_elapsed.max(0.0), sentence_end_elapsed.max(0.0))
-            };
+            // Use the actual sentence start time from the current chunk context
+            let start_elapsed = self.current_chunk_start_time + (self.sentence_start_time as f64 / 1000.0);
             
             let update = TranscriptUpdate {
                 text: sentence.trim().to_string(),
-                timestamp: format!("{}", format_timestamp(start_elapsed)),
+                timestamp: format!("{}", format_timestamp(start_elapsed.max(0.0))),
                 source: "Mixed Audio".to_string(),
                 sequence_id,
                 chunk_start_time: self.current_chunk_start_time,
-                is_partial: true,
+                is_partial: false, // Timeout emissions should be final, not partial
             };
             Some(update)
         } else {
@@ -387,6 +367,12 @@ async fn audio_collection_task<R: Runtime>(
     let mut iteration_count = 0;
     let mut last_reconnection_attempt = std::time::Instant::now();
     let mut system_audio_failure_count = 0;
+    
+    // Ensure audio chunk queue is initialized before starting processing
+    while unsafe { AUDIO_CHUNK_QUEUE.is_none() } {
+        log_info!("Waiting for audio chunk queue initialization...");
+        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    }
     
     while is_running.load(Ordering::SeqCst) {
         iteration_count += 1;
@@ -713,7 +699,7 @@ async fn audio_collection_task<R: Runtime>(
             // QUICK SILENCE DETECTION: Skip chunks that are clearly silence for faster response
             if chunk_rms < CHUNK_SILENCE_THRESHOLD * 0.3 && chunk_avg_level < CHUNK_AVG_SILENCE_THRESHOLD * 0.3 {
                 // Chunk is clearly silence, skip it immediately for faster response
-                log_info!("🔇 Quick silence detection - skipping chunk: RMS: {:.6}, Avg: {:.6} (well below thresholds)", 
+                log_debug!("🔇 Quick silence detection - skipping chunk: RMS: {:.6}, Avg: {:.6} (well below thresholds)", 
                          chunk_rms, chunk_avg_level);
                 current_chunk.clear();
                 last_chunk_time = std::time::Instant::now();
@@ -733,7 +719,7 @@ async fn audio_collection_task<R: Runtime>(
             };
 
             // ✅ VAD already applied during audio collection - no need to filter again
-            log_info!("📊 Audio chunk ready: {} samples (VAD pre-processed, speech content confirmed)", whisper_samples.len());
+            log_debug!("📊 Audio chunk ready: {} samples (VAD pre-processed, speech content confirmed)", whisper_samples.len());
             
             // Create audio chunk
             let chunk_id = CHUNK_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
@@ -813,7 +799,7 @@ async fn transcribe_audio_chunk_whisper_rs(chunk: Vec<f32>) -> Result<Transcript
                 return Err("No whisper model loaded".to_string());
             }
             
-            log_info!("Whisper model is loaded, resampling audio...");
+            log_debug!("Whisper model is loaded, resampling audio...");
             
             // The audio should already be resampled to 16kHz in audio_collection_task
             // But let's verify and resample if needed
@@ -821,7 +807,7 @@ async fn transcribe_audio_chunk_whisper_rs(chunk: Vec<f32>) -> Result<Transcript
         // Check audio levels to help debug silence issues
         let max_amplitude = chunk.iter().map(|&x| x.abs()).fold(0.0_f32, f32::max);
         let avg_amplitude = chunk.iter().map(|&x| x.abs()).sum::<f32>() / chunk.len() as f32;
-        log_info!("Audio levels - Max: {:.6}, Avg: {:.6}", max_amplitude, avg_amplitude);
+        log_debug!("Audio levels - Max: {:.6}, Avg: {:.6}", max_amplitude, avg_amplitude);
         
         if max_amplitude < 0.001 {
             log_info!("⚠️ Very low audio levels detected - check microphone input or speak louder");
@@ -1152,7 +1138,7 @@ async fn whisper_rs_transcription_worker<R: Runtime>(
             }
         }
         
-        // Check for timeout on current sentence
+        // Check for timeout on current sentence (this handles both timeout and partial emissions)
         if let Some(update) = accumulator.check_timeout() {
             log_info!("Whisper-rs Worker {}: Emitting timeout transcript-update event with sequence_id: {}", worker_id, update.sequence_id);
             
@@ -1160,17 +1146,6 @@ async fn whisper_rs_transcription_worker<R: Runtime>(
                 log_error!("Whisper-rs Worker {}: Failed to send timeout transcript update: {}", worker_id, e);
             } else {
                 log_info!("Whisper-rs Worker {}: Successfully emitted timeout transcript-update event", worker_id);
-            }
-        }
-
-        // Check for progressive partial emission (real-time streaming)
-        if let Some(update) = accumulator.check_partial_emit() {
-            log_info!("Whisper-rs Worker {}: Emitting partial transcript-update event with sequence_id: {}", worker_id, update.sequence_id);
-            
-            if let Err(e) = app_handle.emit("transcript-update", &update) {
-                log_error!("Whisper-rs Worker {}: Failed to send partial transcript update: {}", worker_id, e);
-            } else {
-                log_info!("Whisper-rs Worker {}: Successfully emitted partial transcript-update event", worker_id);
             }
         }
         
@@ -1576,27 +1551,7 @@ async fn start_recording<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
         RECORDING_START_TIME.unwrap_or_else(|| std::time::Instant::now()) 
     };
     
-    // Start audio collection task
-    let audio_collection_handle = {
-        let mic_stream_clone = mic_stream.clone();
-        let system_stream_clone = system_stream.clone();
-        let is_running_clone = is_running.clone();
-        let app_handle_clone = app.clone();
-        tokio::spawn(async move {
-            if let Err(e) = audio_collection_task(
-                mic_stream_clone,
-                system_stream_clone,
-                is_running_clone,
-                sample_rate,
-                recording_start_time,
-                app_handle_clone,
-            ).await {
-                log_error!("Audio collection task error: {}", e);
-            }
-        })
-    };
-    
-    // Start transcription workers based on provider
+    // Initialize transcription workers BEFORE starting audio collection to prevent race conditions
     const NUM_WORKERS: usize = 3;
     let mut worker_handles = Vec::new();
     
@@ -1706,6 +1661,26 @@ async fn start_recording<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
             worker_handles.push(worker_handle);
         }
     }
+    
+    // Start audio collection task AFTER workers are initialized
+    let audio_collection_handle = {
+        let mic_stream_clone = mic_stream.clone();
+        let system_stream_clone = system_stream.clone();
+        let is_running_clone = is_running.clone();
+        let app_handle_clone = app.clone();
+        tokio::spawn(async move {
+            if let Err(e) = audio_collection_task(
+                mic_stream_clone,
+                system_stream_clone,
+                is_running_clone,
+                sample_rate,
+                recording_start_time,
+                app_handle_clone,
+            ).await {
+                log_error!("Audio collection task error: {}", e);
+            }
+        })
+    };
     
     // Store task handles globally
     unsafe {
@@ -1889,7 +1864,7 @@ async fn stop_recording(args: RecordingArgs) -> Result<(), String> {
                         0
                     };
                     
-                    log_info!("Worker cleanup status: {} active workers, {} chunks in queue", active_count, queue_size);
+                    log_debug!("Worker cleanup status: {} active workers, {} chunks in queue", active_count, queue_size);
                     
                     // If no active workers and queue is empty, we're done
                     if active_count == 0 && queue_size == 0 {

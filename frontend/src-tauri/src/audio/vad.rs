@@ -204,7 +204,7 @@ pub fn extract_speech_16k(samples_mono_16k: &[f32]) -> Result<Vec<f32>> {
     let mut in_speech = false;
     let mut speech_start_idx = 0;
 
-    info!("VAD: Processing {} samples in {} frames", samples_mono_16k.len(), samples_mono_16k.len() / frame_len);
+    debug!("VAD: Processing {} samples in {} frames", samples_mono_16k.len(), samples_mono_16k.len() / frame_len);
 
     for (frame_idx, frame) in samples_mono_16k.chunks(frame_len).enumerate() {
         if frame.is_empty() { continue; }
@@ -242,7 +242,7 @@ pub fn extract_speech_16k(samples_mono_16k: &[f32]) -> Result<Vec<f32>> {
         }
     }
 
-    info!("VAD: Input {} samples, output {} speech samples", 
+    debug!("VAD: Input {} samples, output {} speech samples", 
           samples_mono_16k.len(), speech_out.len());
     
     // Adaptive threshold based on input audio levels
@@ -251,12 +251,12 @@ pub fn extract_speech_16k(samples_mono_16k: &[f32]) -> Result<Vec<f32>> {
     if speech_out.len() < frame_len / 32 { // Super lenient - only 1/32 of a frame (15 samples)
         // If input has very low levels, it's probably silence - skip it
         if input_avg_level < 0.001 {
-            info!("VAD: Very low input levels ({:.6}), skipping silent chunk", input_avg_level);
+            debug!("VAD: Very low input levels ({:.6}), skipping silent chunk", input_avg_level);
             return Ok(Vec::new());
         } else {
             // Input has some audio but VAD didn't detect speech - include it anyway
             // This prevents losing audio during VAD false negatives
-            info!("VAD: Input has audio ({:.6}) but VAD detected no speech, including input anyway", input_avg_level);
+            debug!("VAD: Input has audio ({:.6}) but VAD detected no speech, including input anyway", input_avg_level);
             return Ok(samples_mono_16k.to_vec());
         }
     }

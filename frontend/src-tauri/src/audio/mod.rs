@@ -10,6 +10,7 @@ pub mod channel;
 pub mod error;
 pub mod intelligent_chunking;
 pub mod streaming_whisper;
+pub mod streaming_service;
 pub mod context_manager;
 
 #[cfg(test)]
@@ -47,6 +48,9 @@ pub use intelligent_chunking::{
 pub use streaming_whisper::{
     StreamingWhisperService, StreamingWhisperConfig, StreamingTranscriptionResult, 
     TranscriptionSegment, StreamingStats
+};
+pub use streaming_service::{
+    StreamingWhisperService as SingleStreamService, StreamingConfig, ConnectionManager, TranscriptResult
 };
 pub use context_manager::{
     StreamingTranscriptionContextManager, ContextManagerConfig, ContextManagerEvent,
