@@ -134,10 +134,35 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
         if (error.message.includes('No recording in progress')) {
           return;
         }
-      } else if (typeof error === 'string' && error.includes('No recording in progress')) {
-        return;
+        // Handle "No audio data recorded" as a warning but still proceed with transcript saving
+        if (error.message.includes('No audio data recorded')) {
+          console.warn('No audio data was recorded, but proceeding with transcript saving if available');
+          setIsProcessing(false);
+          Analytics.trackTranscriptionSuccess();
+          onRecordingStop(true); // Still call with true to allow transcript saving
+          return;
+        }
+      } else if (typeof error === 'string') {
+        if (error.includes('No recording in progress')) {
+          return;
+        }
+        if (error.includes('No audio data recorded')) {
+          console.warn('No audio data was recorded, but proceeding with transcript saving if available');
+          setIsProcessing(false);
+          Analytics.trackTranscriptionSuccess();
+          onRecordingStop(true);
+          return;
+        }
       } else if (error && typeof error === 'object' && 'toString' in error) {
-        if (error.toString().includes('No recording in progress')) {
+        const errorStr = error.toString();
+        if (errorStr.includes('No recording in progress')) {
+          return;
+        }
+        if (errorStr.includes('No audio data recorded')) {
+          console.warn('No audio data was recorded, but proceeding with transcript saving if available');
+          setIsProcessing(false);
+          Analytics.trackTranscriptionSuccess();
+          onRecordingStop(true);
           return;
         }
       }

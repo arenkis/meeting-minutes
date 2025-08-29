@@ -661,7 +661,14 @@ export default function Home() {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Save to SQLite
+      console.log('🔍 DEBUG: Checking save conditions:', { 
+        isCallApi, 
+        transcriptionComplete, 
+        transcriptCount: transcripts.length,
+        transcriptRefCount: transcriptsRef.current.length 
+      });
       if (isCallApi && transcriptionComplete == true) {
+        console.log('🔍 DEBUG: Save conditions met, proceeding with save...');
 
         // await new Promise(resolve => setTimeout(resolve, 5000));
         setIsSavingTranscript(true);
@@ -686,10 +693,12 @@ export default function Home() {
           last_transcript: freshTranscripts.length > 0 ? freshTranscripts[freshTranscripts.length - 1].text.substring(0, 30) + '...' : 'none'
         });
         
+        console.log('🔍 DEBUG: About to call api_save_transcript with:', { meetingTitle, transcriptCount: freshTranscripts.length });
         const responseData = await invoke('api_save_transcript', {
           meetingTitle: meetingTitle,
           transcripts: freshTranscripts, // Use fresh state, not stale closure
         }) as any;
+        console.log('🔍 DEBUG: api_save_transcript response:', responseData);
 
         const meetingId = responseData.meeting_id;
         if (!meetingId) {
@@ -709,6 +718,7 @@ export default function Home() {
         setCurrentMeeting({ id: meetingId, title: meetingTitle });
         setIsMeetingActive(false);
         router.push('/meeting-details');
+        setIsSavingTranscript(false);
       }
       setIsMeetingActive(false);
       setIsRecordingState(false);
@@ -725,6 +735,7 @@ export default function Home() {
       setSummaryStatus('idle');
       setIsSavingTranscript(false);
       setIsRecordingDisabled(false);
+      setIsMeetingActive(false);
     }
   };
 
