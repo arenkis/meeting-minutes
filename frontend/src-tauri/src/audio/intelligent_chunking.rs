@@ -26,14 +26,14 @@ pub struct ChunkingConfig {
 impl Default for ChunkingConfig {
     fn default() -> Self {
         Self {
-            min_chunk_duration_ms: 1000,  // 1 second minimum
+            min_chunk_duration_ms: 3000,  // 3 seconds minimum for better context
             max_chunk_duration_ms: 30000, // 30 seconds maximum
-            target_chunk_duration_ms: 10000, // 10 seconds target (better for transcription)
+            target_chunk_duration_ms: 15000, // 15 seconds target (optimal for Whisper context)
             sample_rate: 16000,
-            overlap_duration_ms: 200, // 200ms overlap for context
-            silence_threshold: 0.002,
-            boundary_confidence_threshold: 0.6,
-            force_chunk_on_silence_ms: 5000, // Force chunk after 5s of silence
+            overlap_duration_ms: 500, // 500ms overlap for better continuity
+            silence_threshold: 0.001, // Less aggressive silence detection
+            boundary_confidence_threshold: 0.8, // Higher confidence required
+            force_chunk_on_silence_ms: 8000, // Force chunk after 8s of silence (increased)
             context_preservation_enabled: true,
         }
     }

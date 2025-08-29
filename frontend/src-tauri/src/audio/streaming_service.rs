@@ -180,11 +180,11 @@ impl<R: Runtime> StreamingWhisperService<R> {
             return Ok(());
         }
 
-        // Ensure minimum length for Whisper
-        let final_samples = if speech_samples.len() < 8000 { // 0.5 seconds minimum
-            debug!("Speech segment too short ({} samples), padding to 0.5 seconds", speech_samples.len());
+        // Ensure minimum length for Whisper (increased for better context)
+        let final_samples = if speech_samples.len() < 24000 { // 1.5 seconds minimum
+            debug!("Speech segment too short ({} samples), padding to 1.5 seconds", speech_samples.len());
             let mut padded = speech_samples.to_vec();
-            padded.resize(8000, 0.0);
+            padded.resize(24000, 0.0);
             padded
         } else {
             speech_samples.to_vec()

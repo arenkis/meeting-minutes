@@ -240,13 +240,13 @@ impl StreamingWhisperService {
     pub fn new(config: StreamingWhisperConfig) -> Result<Self> {
         let chunker_config = super::intelligent_chunking::ChunkingConfig {
             sample_rate: config.sample_rate as u32,
-            min_chunk_duration_ms: 1000,
+            min_chunk_duration_ms: 3000,  // 3 seconds for better context
             max_chunk_duration_ms: 30000,
-            target_chunk_duration_ms: 10000,
+            target_chunk_duration_ms: 15000, // 15 seconds target (optimal for Whisper)
             overlap_duration_ms: (config.context_overlap_samples * 1000 / config.sample_rate) as u32,
-            silence_threshold: 0.01,
+            silence_threshold: 0.001, // Less aggressive
             boundary_confidence_threshold: 0.8,
-            force_chunk_on_silence_ms: 500,
+            force_chunk_on_silence_ms: 8000, // Longer silence tolerance
             context_preservation_enabled: true,
         };
 

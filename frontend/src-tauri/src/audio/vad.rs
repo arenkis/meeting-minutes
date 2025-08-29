@@ -21,13 +21,13 @@ impl DualChannelVad {
         let config = StreamingVadConfig {
             sample_rate,
             frame_duration_ms: 30,
-            redemption_time_ms: 150, // Balanced for speech preservation
-            pre_speech_pad_ms: 100,
-            post_speech_pad_ms: 100,
-            min_speech_duration_ms: 100, // Balanced minimum
+            redemption_time_ms: 800, // Increased - keeps speech segments together longer
+            pre_speech_pad_ms: 300,  // Increased - more context before speech
+            post_speech_pad_ms: 500, // Increased - more context after speech  
+            min_speech_duration_ms: 500, // Increased - prevents very short segments
             adaptive_threshold: true,
-            energy_threshold: 0.003, // Balanced threshold
-            zero_crossing_threshold: 0.1,
+            energy_threshold: 0.002, // Slightly reduced - less aggressive
+            zero_crossing_threshold: 0.15, // Increased - more tolerant of speech variations
             pitch_detection_enabled: true,
         };
 

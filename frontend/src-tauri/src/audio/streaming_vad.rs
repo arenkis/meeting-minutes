@@ -29,14 +29,14 @@ impl Default for StreamingVadConfig {
     fn default() -> Self {
         Self {
             sample_rate: 16000,
-            frame_duration_ms: 30, // Optimal frame size from hyprnote analysis
-            redemption_time_ms: 500,
-            pre_speech_pad_ms: 100,
-            post_speech_pad_ms: 100,
-            min_speech_duration_ms: 50,
+            frame_duration_ms: 30, // Optimal frame size from  analysis
+            redemption_time_ms: 800,  // Increased to prevent premature speech ending
+            pre_speech_pad_ms: 300,   // More pre-context for better transcription
+            post_speech_pad_ms: 500,  // More post-context to capture speech tails
+            min_speech_duration_ms: 500, // Higher minimum to filter out noise
             adaptive_threshold: true,
-            energy_threshold: 0.003, // Balanced threshold
-            zero_crossing_threshold: 0.1,
+            energy_threshold: 0.002, // Slightly less aggressive
+            zero_crossing_threshold: 0.15, // More tolerant of speech variations
             pitch_detection_enabled: true,
         }
     }
