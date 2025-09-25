@@ -38,7 +38,8 @@ RUN cmake -B build \
     -DGGML_METAL=OFF \
     -DGGML_OPENCL=OFF \
     -DGGML_ACCELERATE=OFF \
-    -DGGML_BLAS=OFF
+    -DGGML_BLAS=OFF \
+    -DGGML_VULKAN=OFF
 
 RUN cmake --build build --config Release --target whisper-server -j$(nproc)
 
